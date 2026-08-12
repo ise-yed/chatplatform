@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    {{ conversation.title|default:"Conversation" }} | Chat App
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'chat/css/chat.css' %}">
+    <link rel="stylesheet" href="{% static 'chat/css/messages.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="chat-page">
+
+    <div class="chat-window">
+
+        <!-- HEADER -->
+        <header class="chat-page-header">
+
+            <div class="chat-header-user">
+
+                <a
+                    href="{% url 'chat:conversation_list' %}"
+                    class="chat-header-button mobile-back"
+                    title="بازگشت"
+                >
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+
+                <div class="chat-page-avatar">
+                    {% if conversation.title %}
+                        {{ conversation.title|first|upper }}
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
+                    <span class="chat-online-dot"></span>
+                </div>
+
+                <div class="chat-page-user-info">
+                    <h1>{{ conversation.title|default:"Conversation" }}</h1>
+                    <div class="chat-status">
+                        <span class="status-dot"></span>
+                        آنلاین
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="chat-page-actions">
+                <button type="button" class="chat-header-button" title="جستجو">
+                    <i class="bi bi-search"></i>
+                </button>
+                <button type="button" class="chat-header-button" title="اطلاعات گفتگو">
+                    <i class="bi bi-info-circle"></i>
+                </button>
+                <button type="button" class="chat-header-button" title="بیشتر">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+            </div>
+
+        </header>
+
+        <!-- MESSAGES -->
+        <main class="chat-messages" id="chat-messages">
+            <div class="messages-inner">
+                <div class="chat-date">
+                    <span>امروز</span>
+                </div>
+                {% include 'chat/partials/message_list.html' %}
+            </div>
+        </main>
+
+        <!-- INPUT -->
+        <footer class="chat-composer-wrapper">
+            <form
+                class="chat-composer"
+                hx-post="{% url 'chat:send_message' conversation.id %}"
+                hx-target="#message-list"
+                hx-swap="beforeend"
+                hx-on::after-request="this.reset()"
+            >
+                {% csrf_token %}
+
+                <button type="button" class="composer-button" title="پیوست">
+                    <i class="bi bi-paperclip"></i>
+                </button>
+
+                <div class="composer-input">
+                    <input
+                        type="text"
+                        name="content"
+                        placeholder="پیامتان را بنویسید..."
+                        autocomplete="off"
+                        required
+                    >
+                </div>
+
+                <button type="button" class="composer-button desktop-only" title="ایموجی">
+                    <i class="bi bi-emoji-smile"></i>
+                </button>
+
+                <button type="submit" class="send-message-button" title="ارسال پیام">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+
+            </form>
+
+            <div class="composer-hint">
+                <span>
+                    <i class="bi bi-shield-check"></i>
+                    پیام‌ها رمزگذاری شده‌اند
+                </span>
+                <span class="typing-indicator htmx-indicator">
+                    در حال ارسال...
+                </span>
+            </div>
+        </footer>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'chat/js/chat.js' %}"></script>
+{% endblock %}

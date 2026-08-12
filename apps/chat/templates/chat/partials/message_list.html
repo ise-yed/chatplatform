@@ -1,0 +1,17 @@
+{% load static %}
+
+<div id="message-list">
+
+    {% for message in messages %}
+        {% include 'chat/partials/message_item.html' %}
+    {% empty %}
+        <div class="empty-chat">
+            <div class="empty-chat-icon">
+                <i class="bi bi-chat-heart"></i>
+            </div>
+            <h3>هنوز پیامی وجود ندارد</h3>
+            <p>اولین پیام را بفرستید و گفتگو را شروع کنید.</p>
+        </div>
+    {% endfor %}
+
+</div>

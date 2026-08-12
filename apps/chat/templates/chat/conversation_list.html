@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}گفتگوها | Chat App{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'chat/css/conversations.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="conversation-page">
+
+    <!-- TOP BAR -->
+    <header class="conversation-header">
+
+        <div class="conversation-brand">
+            <div class="conversation-brand-icon">
+                <i class="bi bi-chat-square-dots-fill"></i>
+            </div>
+            <div>
+                <h1>گفتگوها</h1>
+                <p>پیام‌ها و گفتگوهای شما</p>
+            </div>
+        </div>
+
+        <div class="conversation-actions">
+            <button type="button" class="top-icon-button" title="جستجو">
+                <i class="bi bi-search"></i>
+            </button>
+            <button type="button" class="top-icon-button" title="تنظیمات">
+                <i class="bi bi-gear"></i>
+            </button>
+            <div class="user-avatar">
+                {{ request.user.username|first|upper }}
+            </div>
+        </div>
+
+    </header>
+
+    <!-- SEARCH -->
+    <div class="conversation-search">
+        <div class="conversation-search-input">
+            <i class="bi bi-search"></i>
+            <input
+                type="text"
+                placeholder="جستجوی گفتگو..."
+                id="conversationSearch"
+                autocomplete="off"
+            >
+            <kbd>⌘ K</kbd>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <main class="conversation-content">
+
+        <div class="conversation-section-header">
+            <div>
+                <h2>گفتگوهای شما</h2>
+                <span>{{ conversations|length }} گفتگو</span>
+            </div>
+            <button type="button" class="new-conversation-button">
+                <i class="bi bi-plus-lg"></i>
+                <span>گفتگوی جدید</span>
+            </button>
+        </div>
+
+        {% if conversations %}
+
+            <div class="conversation-grid" id="conversationList">
+
+                {% for conversation in conversations %}
+
+                    <a
+                        href="{% url 'chat:conversation_detail' conversation.id %}"
+                        class="conversation-card"
+                        data-conversation="{{ conversation.title|default:'Direct Conversation'|lower }}"
+                    >
+
+                        <div class="conversation-avatar">
+                            {% if conversation.title %}
+                                {{ conversation.title|first|upper }}
+                            {% else %}
+                                <i class="bi bi-person"></i>
+                            {% endif %}
+                            <span class="online-indicator"></span>
+                        </div>
+
+                        <div class="conversation-info">
+                            <div class="conversation-card-top">
+                                <h3>{{ conversation.title|default:"Direct Conversation" }}</h3>
+                                <span class="conversation-time">امروز</span>
+                            </div>
+                            <div class="conversation-preview">
+                                <span>برای مشاهده گفتگو وارد شوید</span>
+                            </div>
+                        </div>
+
+                        <div class="conversation-arrow">
+                            <i class="bi bi-chevron-left"></i>
+                        </div>
+
+                    </a>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <!-- EMPTY STATE -->
+            <div class="empty-conversations">
+                <div class="empty-icon">
+                    <i class="bi bi-chat-square-text"></i>
+                </div>
+                <h2>هنوز گفتگویی نداری</h2>
+                <p>اولین گفتگوی خودت را شروع کن و پیام بده.</p>
+                <button type="button" class="new-conversation-button empty-button">
+                    <i class="bi bi-plus-lg"></i>
+                    شروع گفتگوی جدید
+                </button>
+            </div>
+
+        {% endif %}
+
+    </main>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'chat/js/conversations.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ورود | Chat App{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'chat/css/auth.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="auth-page">
+
+    <div class="auth-card">
+
+        <!-- Logo -->
+        <div class="auth-logo">
+            <div class="auth-logo-icon">
+                <i class="bi bi-chat-dots-fill"></i>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="auth-header">
+            <h1>خوش برگشتی 👋</h1>
+            <p>برای ادامه وارد حساب خودت شو</p>
+        </div>
+
+        <!-- Error -->
+        {% if error %}
+        <div class="auth-error">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Form -->
+        <form method="post" class="auth-form">
+
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div class="form-group">
+                <label for="username">نام کاربری</label>
+                <div class="input-wrapper">
+                    <i class="bi bi-person"></i>
+                    <input
+                        id="username"
+                        type="text"
+                        name="username"
+                        placeholder="نام کاربری خود را وارد کنید"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <div class="password-label">
+                    <label for="password">رمز عبور</label>
+                    <a href="#">فراموشی رمز؟</a>
+                </div>
+                <div class="input-wrapper">
+                    <i class="bi bi-lock"></i>
+                    <input
+                        id="password"
+                        type="password"
+                        name="password"
+                        placeholder="رمز عبور خود را وارد کنید"
+                        autocomplete="current-password"
+                        required
+                    >
+                    <button
+                        type="button"
+                        class="password-toggle"
+                        onclick="togglePassword()"
+                        aria-label="نمایش رمز عبور"
+                    >
+                        <i class="bi bi-eye" id="password-icon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Remember -->
+            <div class="remember-row">
+                <label class="remember-me">
+                    <input type="checkbox" name="remember">
+                    <span class="custom-checkbox">
+                        <i class="bi bi-check"></i>
+                    </span>
+                    <span>مرا به خاطر بسپار</span>
+                </label>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="login-button">
+                <span>ورود به حساب</span>
+                <i class="bi bi-arrow-left"></i>
+            </button>
+
+        </form>
+
+        <!-- Divider -->
+        <div class="auth-divider">
+            <span>یا</span>
+        </div>
+
+        <!-- Register -->
+        <div class="register-section">
+            <span>هنوز حساب نداری؟</span>
+            <a href="#">ثبت‌نام کن</a>
+        </div>
+
+    </div>
+
+    <!-- Background decoration -->
+    <div class="auth-decoration decoration-1"></div>
+    <div class="auth-decoration decoration-2"></div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'chat/js/auth.js' %}"></script>
+{% endblock %}
