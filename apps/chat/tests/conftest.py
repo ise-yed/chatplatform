@@ -51,3 +51,9 @@ def mock_broadcast(monkeypatch):
     HTTP/permission behavior.
     """
     monkeypatch.setattr('apps.chat.services.message.broadcast_new_message', lambda **kwargs: None)
+    
+    
+@pytest.fixture(autouse=True)
+def mock_read_receipt_broadcast(monkeypatch):
+    """Same reasoning as mock_broadcast — keeps read-receipt tests off the real Redis channel layer."""
+    monkeypatch.setattr('apps.chat.services.participant.broadcast_read_receipt', lambda **kwargs: None)

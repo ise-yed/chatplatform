@@ -31,9 +31,15 @@
                 </span>
 
                 {% if message.sender == request.user %}
-                    <span class="message-status" title="ارسال شده">
-                        <i class="bi bi-check2-all"></i>
-                    </span>
+                    {% if other_last_read_message and message.created_at <= other_last_read_message.created_at %}
+                        <span class="message-status" title="دیده شد">
+                            <i class="bi bi-check2-all" style="color:#60a5fa"></i>
+                        </span>
+                    {% else %}
+                        <span class="message-status" title="ارسال شده">
+                            <i class="bi bi-check2"></i>
+                        </span>
+                    {% endif %}
                 {% endif %}
             </div>
 

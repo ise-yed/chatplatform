@@ -39,11 +39,16 @@
 
                 <div class="chat-page-user-info">
                     <h1>{{ conversation.title|default:"Conversation" }}</h1>
-                    <div class="chat-status">
-                        <span class="status-dot"></span>
-                        آنلاین
-                    </div>
+                    {% comment %} <div class="chat-status"> {% endcomment %}
+                        {% comment %} <span class="status-dot"></span> {% endcomment %}
+                        {% comment %} آنلاین {% endcomment %}
+                    {% comment %} </div> {% endcomment %}
                 </div>
+
+                <div class="chat-status" id="chat-status">
+                <span class="status-dot"></span>
+                <span id="chat-status-text">آنلاین</span>
+               </div>
 
             </div>
 

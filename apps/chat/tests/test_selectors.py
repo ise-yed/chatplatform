@@ -1,5 +1,6 @@
 import pytest
-
+from apps.chat.selectors import get_other_participant_last_read_message
+from apps.chat.services import mark_conversation_as_read
 from apps.chat.selectors import (
     get_conversation_for_user,
     get_conversations_for_user,
@@ -70,3 +71,21 @@ def test_get_messages_for_conversation_excludes_soft_deleted(user_a, user_b):
 
     messages = get_messages_for_conversation(conversation_id=conversation.id)
     assert message not in messages
+    
+    
+
+def test_get_other_participant_last_read_message_returns_none_initially(user_a, user_b):
+    """Before anyone reads anything, this must be None."""
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    result = get_other_participant_last_read_message(conversation_id=conversation.id, user=user_a)
+    assert result is None
+
+
+def test_get_other_participant_last_read_message_reflects_the_other_users_read(user_a, user_b):
+    """After user_b reads, user_a's view of 'other's last read' must show it."""
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    message = send_message(conversation_id=conversation.id, sender=user_a, content='hi')
+    mark_conversation_as_read(conversation_id=conversation.id, user=user_b)
+
+    result = get_other_participant_last_read_message(conversation_id=conversation.id, user=user_a)
+    assert result == message

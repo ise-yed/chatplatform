@@ -4,6 +4,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 from apps.chat.selectors.participant import is_user_participant
+from apps.chat.services.participant import mark_conversation_as_read
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -45,6 +46,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        await database_sync_to_async(mark_conversation_as_read)(
+            conversation_id=self.conversation_id, user=self.user
+        )
 
     async def disconnect(self, close_code):
         if hasattr(self, 'group_name'):
@@ -71,28 +75,43 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if handler is not None:
             await handler(self, payload.get('data') or {})
 
-    async def _handle_typing(self, data):
-        """
-        Relays a "user is typing" signal to everyone in the group,
-        including the sender's own connection — Channels groups have
-        no built-in "everyone except me" send, so the client is
-        responsible for ignoring events where user_id is its own.
-        """
+    async def _handle_typing_start(self, data):
         await self.channel_layer.group_send(
             self.group_name,
             {
                 'type': 'broadcast_typing',
                 'user_id': str(self.user.id),
                 'username': self.user.username,
+                'is_typing': True,
             },
         )
 
+
+    async def _handle_typing_stop(self, data):
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                'type': 'broadcast_typing',
+                'user_id': str(self.user.id),
+                'username': self.user.username,
+                'is_typing': False,
+            },
+        )
+
+
     async def _handle_seen(self, data):
-        """Placeholder for read receipts — implemented in a later phase."""
-        pass
+        """
+        Marks the conversation as read up to the given message (or the
+        latest message if none is given). Sent by the client when a
+        new message arrives while the conversation window is visible.
+        """
+        await database_sync_to_async(mark_conversation_as_read)(
+            conversation_id=self.conversation_id, user=self.user, message_id=data.get('message_id')
+        )
 
     INCOMING_HANDLERS = {
-        'typing': _handle_typing,
+    'typing.start': _handle_typing_start,
+    'typing.stop': _handle_typing_stop,
         'seen': _handle_seen,
     }
 
@@ -117,5 +136,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def broadcast_typing(self, event):
         await self.send(text_data=json.dumps({
             'event': 'typing',
-            'data': {'user_id': event['user_id'], 'username': event['username']},
+            'data': {'user_id': event['user_id'], 'username': event['username'], 'is_typing': event['is_typing']},
+        }))
+        
+    async def broadcast_read_receipt(self, event):
+        await self.send(text_data=json.dumps({
+            'event': 'read_receipt',
+            'data': {'user_id': event['user_id'], 'last_read_message_id': event['last_read_message_id']},
         }))

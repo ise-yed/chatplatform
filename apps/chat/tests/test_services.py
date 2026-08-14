@@ -1,4 +1,5 @@
 import pytest
+from apps.chat.services import mark_conversation_as_read, send_message
 
 from apps.chat.choices import ConversationType, ParticipantRole
 from apps.chat.models import Conversation, Message, Participant
@@ -60,3 +61,23 @@ def test_send_message_is_persisted_to_database(user_a, user_b):
     conversation = create_direct_conversation(creator=user_a, other_user=user_b)
     message = send_message(conversation_id=conversation.id, sender=user_a, content='saved?')
     assert Message.objects.filter(id=message.id).exists()
+    
+    
+def test_mark_conversation_as_read_updates_participant(user_a, user_b):
+    """The reading user's Participant.last_read_message must be updated."""
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    message = send_message(conversation_id=conversation.id, sender=user_a, content='hi')
+
+    mark_conversation_as_read(conversation_id=conversation.id, user=user_b)
+
+    participant = Participant.objects.get(conversation=conversation, user=user_b)
+    assert participant.last_read_message_id == message.id
+
+
+def test_mark_conversation_as_read_with_no_messages_does_nothing(user_a, user_b):
+    """Marking an empty conversation as read must not raise or update anything."""
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    mark_conversation_as_read(conversation_id=conversation.id, user=user_b)
+
+    participant = Participant.objects.get(conversation=conversation, user=user_b)
+    assert participant.last_read_message_id is None

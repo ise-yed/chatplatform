@@ -29,3 +29,19 @@ def broadcast_new_message(*, message):
             'created_at': message.created_at.isoformat(),
         },
     )
+    
+def broadcast_read_receipt(*, conversation_id, user_id, last_read_message_id):
+    """
+    Notifies every consumer in the conversation group that a
+    participant has read up to a given message — used to update
+    "seen" checkmarks on the sender's own messages in real time.
+    """
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'conversation_{conversation_id}',
+        {
+            'type': 'broadcast_read_receipt',
+            'user_id': str(user_id),
+            'last_read_message_id': str(last_read_message_id),
+        },
+    )

@@ -67,7 +67,7 @@ function buildMessageElement(message) {
         const statusEl = document.createElement('span');
         statusEl.className = 'message-status';
         statusEl.title = 'ارسال شده';
-        statusEl.innerHTML = '<i class="bi bi-check2-all"></i>'; // static markup only, no user data
+        statusEl.innerHTML = '<i class="bi bi-check2"></i>';
         meta.appendChild(statusEl);
     }
 
@@ -83,6 +83,51 @@ function buildMessageElement(message) {
 | WebSocket connection + event wiring
 |--------------------------------------------------------------------------
 */
+function createTypingController(socket, input) {
+    let stopTypingTimer = null;
+    let isTyping = false;
+
+    function startTyping() {
+        if (!isTyping) {
+            isTyping = true;
+            socket.emit('typing.start', {});
+        }
+
+        clearTimeout(stopTypingTimer);
+
+        stopTypingTimer = setTimeout(() => {
+            stopTyping();
+        }, 1500);
+    }
+
+    function stopTyping() {
+        if (!isTyping) return;
+
+        isTyping = false;
+        clearTimeout(stopTypingTimer);
+        stopTypingTimer = null;
+
+        socket.emit('typing.stop', {});
+    }
+
+    input.addEventListener('input', function () {
+        if (!this.value.trim()) {
+            stopTyping();
+            return;
+        }
+
+        startTyping();
+    });
+
+    input.addEventListener('blur', function () {
+        stopTyping();
+    });
+
+    return {
+        stop: stopTyping,
+    };
+}
+
 
 document.addEventListener('DOMContentLoaded', function () {
     scrollChatToBottom();
@@ -94,6 +139,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new ChatSocket(`${protocol}//${window.location.host}/ws/chat/${conversationId}/`);
 
+    const form = document.querySelector('.chat-composer');
+    let typingController = null;
+
+    if (form) {
+        const input = form.querySelector('input[name="content"]');
+
+        if (input) {
+            typingController = createTypingController(socket, input);
+        }
+    }
+
     socket.on('message.new', function (data) {
         const messageList = document.getElementById('message-list');
         if (!messageList) return;
@@ -103,13 +159,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
         messageList.appendChild(buildMessageElement(data));
         scrollChatToBottom();
+        
+        if (document.visibilityState === 'visible' && String(data.sender_id) !== document.body.dataset.userId) {
+            socket.emit('seen', { message_id: data.id });
+        }
     });
 
     socket.on('typing', function (data) {
         if (String(data.user_id) === document.body.dataset.userId) return;
-        // فعلاً فقط لاگ — نمایش واقعی typing indicator در فاز بعد (طبق نقشه راه)
-        console.debug(`${data.username} is typing...`);
+
+        const statusText = document.getElementById('chat-status-text');
+
+        if (!statusText) return;
+
+        if (data.is_typing) {
+            statusText.textContent = `${data.username} در حال نوشتن...`;
+        } else {
+            statusText.textContent = 'آنلاین';
+        }
     });
+
+    socket.on('read_receipt', function (data) {
+    if (data.user_id === document.body.dataset.userId) return; // echo خودمون رو نادیده بگیر
+    markMessagesAsSeen(data.last_read_message_id);
+});
+    document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+        socket.emit('seen', {});
+    }
+});
 
     socket.connect();
 
@@ -119,7 +197,6 @@ document.addEventListener('DOMContentLoaded', function () {
     |----------------------------------------------------------------
     */
 
-    const form = document.querySelector('.chat-composer');
     if (form) {
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -141,6 +218,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             if (response.ok) {
+                if (typingController) {
+                    typingController.stop();
+                }
+
                 input.value = '';
             }
         });
@@ -152,6 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
 | Enter = Send
 |--------------------------------------------------------------------------
 */
+
 
 document.addEventListener('keydown', function (event) {
     const target = event.target;
@@ -166,3 +248,20 @@ document.addEventListener('keydown', function (event) {
         }
     }
 });
+
+
+function markMessagesAsSeen(lastReadMessageId) {
+    const messageList = document.getElementById('message-list');
+    if (!messageList) return;
+
+    const myMessages = Array.from(messageList.querySelectorAll('.message-row.message-me'));
+    const targetIndex = myMessages.findIndex((el) => el.dataset.messageId === lastReadMessageId);
+    if (targetIndex === -1) return;
+
+    myMessages.slice(0, targetIndex + 1).forEach((el) => {
+        const status = el.querySelector('.message-status');
+        if (!status) return;
+        status.title = 'دیده شد';
+        status.innerHTML = '<i class="bi bi-check2-all" style="color:#60a5fa"></i>';
+    });
+}
