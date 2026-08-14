@@ -29,4 +29,5 @@ class MessageListCreateApi(APIView):
             sender=request.user,
             content=serializer.validated_data['content'],
         )
+
         return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)

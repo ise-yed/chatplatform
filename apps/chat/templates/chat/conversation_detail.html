@@ -14,8 +14,7 @@
 
 <div class="chat-page">
 
-    <div class="chat-window">
-
+    <div class="chat-window" data-conversation-id="{{ conversation.id }}">
         <!-- HEADER -->
         <header class="chat-page-header">
 
@@ -76,10 +75,9 @@
         <footer class="chat-composer-wrapper">
             <form
                 class="chat-composer"
-                hx-post="{% url 'chat:send_message' conversation.id %}"
-                hx-target="#message-list"
-                hx-swap="beforeend"
-                hx-on::after-request="this.reset()"
+                method="post"
+                action="{% url 'chat:send_message' conversation.id %}"
+
             >
                 {% csrf_token %}
 
@@ -104,16 +102,12 @@
                 <button type="submit" class="send-message-button" title="ارسال پیام">
                     <i class="bi bi-send-fill"></i>
                 </button>
-
             </form>
 
             <div class="composer-hint">
                 <span>
                     <i class="bi bi-shield-check"></i>
                     پیام‌ها رمزگذاری شده‌اند
-                </span>
-                <span class="typing-indicator htmx-indicator">
-                    در حال ارسال...
                 </span>
             </div>
         </footer>
@@ -125,5 +119,6 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'chat/js/socket.js' %}"></script>
     <script src="{% static 'chat/js/chat.js' %}"></script>
-{% endblock %}
+    {% endblock %}

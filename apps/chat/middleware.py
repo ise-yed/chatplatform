@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 @database_sync_to_async
 def get_user_from_token(token):
+    """Resolves a JWT access token (from the mobile app) into a User instance."""
     from apps.accounts.models import User
 
     try:
@@ -20,10 +21,24 @@ def get_user_from_token(token):
 
 
 class JWTAuthMiddleware(BaseMiddleware):
-    async def __call__(self, scope, receive, send):
-        query_params = parse_qs(scope['query_string'].decode())
-        token = query_params.get('token', [None])[0]
+    """
+    Fallback authentication for WebSocket connections that arrive
+    WITHOUT a valid Django session — i.e. the mobile app, which has
+    no cookie and instead sends a JWT via the ?token= query param.
 
-        scope['user'] = await get_user_from_token(token) if token else AnonymousUser()
+    This middleware must run AFTER channels.auth.AuthMiddlewareStack
+    in the asgi.py chain, so that scope['user'] is already populated
+    from the session cookie for browser (HTMX) connections. If the
+    session already resolved a real user, this middleware does
+    nothing — it only kicks in when scope['user'] is still Anonymous.
+    """
+
+    async def __call__(self, scope, receive, send):
+        current_user = scope.get('user')
+
+        if current_user is None or current_user.is_anonymous:
+            query_params = parse_qs(scope['query_string'].decode())
+            token = query_params.get('token', [None])[0]
+            scope['user'] = await get_user_from_token(token) if token else AnonymousUser()
 
         return await super().__call__(scope, receive, send)

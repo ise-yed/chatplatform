@@ -1,7 +1,6 @@
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, render
-
 from apps.chat.selectors import (
     get_conversation_for_user,
     get_messages_for_conversation,
@@ -46,4 +45,6 @@ def send_message_view(request, conversation_id):
         return HttpResponseForbidden('Message content cannot be empty.')
 
     message = send_message(conversation_id=conversation_id, sender=request.user, content=content)
-    return render(request, 'chat/partials/message_item.html', {'message': message})
+
+    return HttpResponse(status=204)
+    # return render(request, 'chat/partials/message_item.html', {'message': message})

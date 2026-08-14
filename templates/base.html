@@ -15,8 +15,7 @@
     <link
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.rtl.min.css"
         rel="stylesheet"
-        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuqIAvNWLzeN8tE5YBujZqJLB"
-        crossorigin="anonymous"
+
     >
 
     <!-- Bootstrap Icons -->
@@ -32,18 +31,19 @@
     >
 
     <!-- HTMX -->
-    <script
-        src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
-        integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
-        crossorigin="anonymous"
-    ></script>
+    <script 
+    src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js" 
+    integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
+    crossorigin="anonymous">
+    </script>
+
 
     <!-- HTMX WebSocket Extension -->
-    <script
-        src="https://cdn.jsdelivr.net/npm/htmx-ext-ws@2.0.4"
-        integrity="sha384-1RwI/nvUSrMRuNj7hX1+27J8XDdCoSLf0EjEyF69nacuWyiJYoQ/j39RT1mSnd2G"
-        crossorigin="anonymous"
-    ></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/htmx-ext-ws@2.0.4" 
+    integrity="sha384-1RwI/nvUSrMRuNj7hX1+27J8XDdCoSLf0EjEyF69nacuWyiJYoQ/j39RT1mSnd2G"
+    crossorigin="anonymous"></script>
+
 
     <style>
 
@@ -870,8 +870,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 
-<body>
-
+<body data-user-id="{{ request.user.id|default_if_none:'' }}">
     <main class="page-content">
         {% block content %}
         {% endblock %}

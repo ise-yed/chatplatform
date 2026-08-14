@@ -1,0 +1,85 @@
+# ==========================================================
+# Python / Django
+# ==========================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Django local files
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+logs/
+
+# Django migrations cache / runtime
+*.mo
+*.pot
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.cache/
+.tox/
+.nox/
+
+# Type checking / linting
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.pytype/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Uploaded archives / temporary project backups
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+
+# Secrets / certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx

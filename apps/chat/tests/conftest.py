@@ -39,3 +39,15 @@ def auth_client(api_client):
         return api_client
 
     return _authenticate
+
+
+@pytest.fixture(autouse=True)
+def mock_broadcast(monkeypatch):
+    """
+    Keeps every test in this app from touching the real Redis channel
+    layer. Broadcasting itself will be covered separately in
+    test_consumers.py (Phase 13) using WebsocketCommunicator — these
+    tests only care about DB writes, query correctness, and
+    HTTP/permission behavior.
+    """
+    monkeypatch.setattr('apps.chat.services.message.broadcast_new_message', lambda **kwargs: None)
