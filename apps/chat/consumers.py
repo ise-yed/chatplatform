@@ -5,6 +5,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 from apps.chat.selectors.participant import is_user_participant
 from apps.chat.services.participant import mark_conversation_as_read
+from apps.common.constants import  BROADCAST_PRESENCE,  BROADCAST_TYPING, NEW_MESSAGE, READ_RECEIPT, TYPING
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -46,13 +47,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        
+
         await database_sync_to_async(mark_conversation_as_read)(
             conversation_id=self.conversation_id, user=self.user
         )
 
     async def disconnect(self, close_code):
         if hasattr(self, 'group_name'):
-            await self.channel_layer.group_discard(self.group_name, self.channel_name)
+            await self.channel_layer.group_discard(
+                self.group_name,
+                self.channel_name,
+            )
 
     # -----------------------------------------------------------
     # Client -> server: incoming event dispatch
@@ -79,7 +85,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.group_name,
             {
-                'type': 'broadcast_typing',
+                'type': BROADCAST_TYPING,
                 'user_id': str(self.user.id),
                 'username': self.user.username,
                 'is_typing': True,
@@ -91,7 +97,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             self.group_name,
             {
-                'type': 'broadcast_typing',
+                'type': BROADCAST_TYPING,
                 'user_id': str(self.user.id),
                 'username': self.user.username,
                 'is_typing': False,
@@ -122,7 +128,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def broadcast_new_message(self, event):
         """Triggered by services.realtime.broadcast_new_message for every new message, from any entry point."""
         await self.send(text_data=json.dumps({
-            'event': 'message.new',
+            'event': NEW_MESSAGE,
             'data': {
                 'id': event['message_id'],
                 'conversation_id': event['conversation_id'],
@@ -135,12 +141,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def broadcast_typing(self, event):
         await self.send(text_data=json.dumps({
-            'event': 'typing',
+            'event': TYPING,
             'data': {'user_id': event['user_id'], 'username': event['username'], 'is_typing': event['is_typing']},
         }))
         
+    async def broadcast_presence(self, event):
+        await self.send(text_data=json.dumps({
+            'event': BROADCAST_PRESENCE,
+            'data': {
+                'user_id': event['user_id'],
+                'username': event['username'],
+                'is_online': event['is_online'],
+            },
+        }))
+    
     async def broadcast_read_receipt(self, event):
         await self.send(text_data=json.dumps({
-            'event': 'read_receipt',
+            'event': READ_RECEIPT,
             'data': {'user_id': event['user_id'], 'last_read_message_id': event['last_read_message_id']},
         }))

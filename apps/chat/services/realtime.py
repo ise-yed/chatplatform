@@ -1,6 +1,8 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+from apps.common.constants import BROADCAST_NEW_MESSAGE, BROADCAST_READ_RECEIPT
+
 
 def broadcast_new_message(*, message):
     """
@@ -20,7 +22,7 @@ def broadcast_new_message(*, message):
     async_to_sync(channel_layer.group_send)(
         f'conversation_{message.conversation_id}',
         {
-            'type': 'broadcast_new_message',
+            'type': BROADCAST_NEW_MESSAGE,
             'message_id': str(message.id),
             'conversation_id': str(message.conversation_id),
             'sender_id': str(message.sender_id),
@@ -40,7 +42,7 @@ def broadcast_read_receipt(*, conversation_id, user_id, last_read_message_id):
     async_to_sync(channel_layer.group_send)(
         f'conversation_{conversation_id}',
         {
-            'type': 'broadcast_read_receipt',
+            'type': BROADCAST_READ_RECEIPT,
             'user_id': str(user_id),
             'last_read_message_id': str(last_read_message_id),
         },

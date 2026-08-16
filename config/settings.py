@@ -187,11 +187,12 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'chat:conversation_list'
 ASGI_APPLICATION = 'config.asgi.application'
 
+REDIS_HOST = config('REDIS_HOST', default='127.0.0.1')
+REDIS_PORT = config('REDIS_PORT', default=6379, cast=int)
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [(config('REDIS_HOST', default='127.0.0.1'), config('REDIS_PORT', default=6379, cast=int))],
-        },
+        'CONFIG': {'hosts': [(REDIS_HOST, REDIS_PORT)]},
     },
 }

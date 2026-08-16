@@ -884,7 +884,11 @@
         crossorigin="anonymous"
     ></script>
 
-    {% block extra_js %}{% endblock %}
+    {% block extra_js %}
+
+        <script src="{% static 'chat/js/socket.js' %}"></script>
+        <script src="{% static 'chat/js/presence.js' %}"></script>
+    {% endblock %}
 
 </body>
 </html>

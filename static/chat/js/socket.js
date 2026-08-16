@@ -1,20 +1,10 @@
-/*
-|--------------------------------------------------------------------------
-| Minimal event-based WebSocket wrapper
-|--------------------------------------------------------------------------
-| Every message on the wire (both directions) is a small JSON envelope:
-|     {"event": "<name>", "data": {...}}
-| .on(eventName, handler) registers a listener; .emit sends one. This
-| keeps consumers.py and every page's JS speaking the same event
-| vocabulary — adding a new real-time feature (typing, seen, presence)
-| is just one more handler, no changes to the transport itself.
-*/
-
 class ChatSocket {
-    constructor(url) {
+    constructor(url, options = {}) {
         this.url = url;
         this.socket = null;
         this.handlers = {};
+        this.reconnectDelay = options.reconnectDelay || 2000;
+        this.shouldReconnect = true;
     }
 
     on(eventName, handler) {
@@ -45,6 +35,16 @@ class ChatSocket {
             (this.handlers[payload.event] || []).forEach((handler) => handler(payload.data));
         });
 
+        this.socket.addEventListener('close', () => {
+            if (!this.shouldReconnect) return;
+            setTimeout(() => this.connect(), this.reconnectDelay);
+        });
+
         return this;
+    }
+
+    disconnect() {
+        this.shouldReconnect = false;
+        if (this.socket) this.socket.close();
     }
 }

@@ -78,18 +78,21 @@
                         data-conversation="{{ conversation.title|default:'Direct Conversation'|lower }}"
                     >
 
-                        <div class="conversation-avatar">
-                            {% if conversation.title %}
-                                {{ conversation.title|first|upper }}
-                            {% else %}
-                                <i class="bi bi-person"></i>
-                            {% endif %}
-                            <span class="online-indicator"></span>
-                        </div>
+                <div
+                    class="conversation-avatar"
+                    data-user-online="{{ conversation.other_participant.id }}"
+                >
+                    {% if conversation.other_participant %}
+                        {{ conversation.other_participant.username|first|upper }}
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
+                    <span class="online-indicator {% if conversation.other_participant.is_online %}is-online{% endif %}"></span>
+                </div>
 
                         <div class="conversation-info">
                             <div class="conversation-card-top">
-                                <h3>{{ conversation.title|default:"Direct Conversation" }}</h3>
+                            <h3>{{ conversation.other_participant.username|default:"Direct Conversation" }}</h3>
                                 <span class="conversation-time">امروز</span>
                             </div>
                             <div class="conversation-preview">
@@ -131,5 +134,8 @@
 {% endblock %}
 
 {% block extra_js %}
+
+    {{ block.super }}
+
     <script src="{% static 'chat/js/conversations.js' %}"></script>
 {% endblock %}

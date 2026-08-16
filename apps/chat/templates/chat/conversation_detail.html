@@ -14,12 +14,17 @@
 
 <div class="chat-page">
 
-    <div class="chat-window" data-conversation-id="{{ conversation.id }}">
+    <div
+        class="chat-window"
+        data-conversation-id="{{ conversation.id }}"
+    >
+
         <!-- HEADER -->
         <header class="chat-page-header">
 
             <div class="chat-header-user">
 
+                <!-- BACK -->
                 <a
                     href="{% url 'chat:conversation_list' %}"
                     class="chat-header-button mobile-back"
@@ -28,69 +33,136 @@
                     <i class="bi bi-arrow-right"></i>
                 </a>
 
-                <div class="chat-page-avatar">
-                    {% if conversation.title %}
-                        {{ conversation.title|first|upper }}
+
+                <!-- AVATAR -->
+                <div
+                    class="chat-page-avatar"
+                    data-user-online="{{ conversation.other_participant.id|default:'' }}"
+                >
+
+                    {% if conversation.other_participant %}
+                        {{ conversation.other_participant.username|first|upper }}
                     {% else %}
                         <i class="bi bi-person"></i>
                     {% endif %}
+
                     <span class="chat-online-dot"></span>
+
                 </div>
 
+
+                <!-- USER INFO -->
                 <div class="chat-page-user-info">
-                    <h1>{{ conversation.title|default:"Conversation" }}</h1>
-                    {% comment %} <div class="chat-status"> {% endcomment %}
-                        {% comment %} <span class="status-dot"></span> {% endcomment %}
-                        {% comment %} آنلاین {% endcomment %}
-                    {% comment %} </div> {% endcomment %}
-                </div>
 
-                <div class="chat-status" id="chat-status">
-                <span class="status-dot"></span>
-                <span id="chat-status-text">آنلاین</span>
-               </div>
+                    <h1>
+                        {% if conversation.other_participant %}
+                            {{ conversation.other_participant.get_full_name|default:conversation.other_participant.username }}
+                        {% else %}
+                            گفتگو
+                        {% endif %}
+                    </h1>
+
+
+                    <!-- STATUS -->
+                    <div class="chat-status">
+
+                        <span
+                            class="status-dot {% if conversation.other_participant.is_online %}is-online{% endif %}"
+                            data-user-online="{{ conversation.other_participant.id|default:'' }}"
+                        ></span>
+
+                        <span
+                            id="chat-status-text"
+                            data-user-online-text="{{ conversation.other_participant.id|default:'' }}"
+                            data-presence-text="{% if conversation.other_participant.is_online %}آنلاین{% elif conversation.other_participant.last_seen %}آخرین بازدید: {{ conversation.other_participant.last_seen|date:'H:i' }}{% else %}آفلاین{% endif %}"
+                        >
+                            {% if conversation.other_participant.is_online %}
+                                آنلاین
+                            {% elif conversation.other_participant.last_seen %}
+                                آخرین بازدید: {{ conversation.other_participant.last_seen|date:"H:i" }}
+                            {% else %}
+                                آفلاین
+                            {% endif %}
+                        </span>
+
+                    </div>
+
+                </div>
 
             </div>
 
+
+            <!-- ACTIONS -->
             <div class="chat-page-actions">
-                <button type="button" class="chat-header-button" title="جستجو">
+
+                <button
+                    type="button"
+                    class="chat-header-button"
+                    title="جستجو"
+                >
                     <i class="bi bi-search"></i>
                 </button>
-                <button type="button" class="chat-header-button" title="اطلاعات گفتگو">
+
+                <button
+                    type="button"
+                    class="chat-header-button"
+                    title="اطلاعات گفتگو"
+                >
                     <i class="bi bi-info-circle"></i>
                 </button>
-                <button type="button" class="chat-header-button" title="بیشتر">
+
+                <button
+                    type="button"
+                    class="chat-header-button"
+                    title="بیشتر"
+                >
                     <i class="bi bi-three-dots-vertical"></i>
                 </button>
+
             </div>
 
         </header>
 
+
         <!-- MESSAGES -->
-        <main class="chat-messages" id="chat-messages">
+        <main
+            class="chat-messages"
+            id="chat-messages"
+        >
             <div class="messages-inner">
+
                 <div class="chat-date">
                     <span>امروز</span>
                 </div>
+
                 {% include 'chat/partials/message_list.html' %}
+
             </div>
         </main>
 
+
         <!-- INPUT -->
         <footer class="chat-composer-wrapper">
+
             <form
                 class="chat-composer"
                 method="post"
                 action="{% url 'chat:send_message' conversation.id %}"
-
             >
+
                 {% csrf_token %}
 
-                <button type="button" class="composer-button" title="پیوست">
+                <button
+                    type="button"
+                    class="composer-button"
+                    title="پیوست"
+                >
                     <i class="bi bi-paperclip"></i>
                 </button>
 
+
                 <div class="composer-input">
+
                     <input
                         type="text"
                         name="content"
@@ -98,23 +170,39 @@
                         autocomplete="off"
                         required
                     >
+
                 </div>
 
-                <button type="button" class="composer-button desktop-only" title="ایموجی">
+
+                <button
+                    type="button"
+                    class="composer-button desktop-only"
+                    title="ایموجی"
+                >
                     <i class="bi bi-emoji-smile"></i>
                 </button>
 
-                <button type="submit" class="send-message-button" title="ارسال پیام">
+
+                <button
+                    type="submit"
+                    class="send-message-button"
+                    title="ارسال پیام"
+                >
                     <i class="bi bi-send-fill"></i>
                 </button>
+
             </form>
 
+
             <div class="composer-hint">
+
                 <span>
                     <i class="bi bi-shield-check"></i>
                     پیام‌ها رمزگذاری شده‌اند
                 </span>
+
             </div>
+
         </footer>
 
     </div>
@@ -123,7 +211,10 @@
 
 {% endblock %}
 
+
 {% block extra_js %}
-    <script src="{% static 'chat/js/socket.js' %}"></script>
+    {{ block.super }}
+
     <script src="{% static 'chat/js/chat.js' %}"></script>
-    {% endblock %}
+
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseForbidden
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import  render
 from apps.chat.selectors import (
     get_conversation_for_user,
     get_messages_for_conversation,
@@ -9,6 +9,7 @@ from apps.chat.selectors import (
     is_user_participant,
 )
 from apps.chat.services import send_message
+from apps.chat.selectors import attach_other_participant
 
 
 @login_required
@@ -21,6 +22,7 @@ def conversation_detail_view(request, conversation_id):
     other_last_read_message = get_other_participant_last_read_message(
         conversation_id=conversation_id, user=request.user
     )
+    conversation = attach_other_participant(conversations=[conversation], user=request.user)[0]
     return render(
         request,
         'chat/conversation_detail.html',
@@ -31,8 +33,6 @@ def conversation_detail_view(request, conversation_id):
         },
     )
     
-    
-
 
 @login_required
 def send_message_view(request, conversation_id):

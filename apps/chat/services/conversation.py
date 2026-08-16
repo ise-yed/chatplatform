@@ -24,3 +24,4 @@ def create_direct_conversation(*, creator, other_user):
         Participant(conversation=conversation, user=other_user, role=ParticipantRole.MEMBER),
     ])
     return conversation
+
