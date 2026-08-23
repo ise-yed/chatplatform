@@ -1,18 +1,23 @@
 import uuid
 from apps.common.models import BaseModel
+from apps.accounts.choices import AuthType
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
 
-class DeviceSession( BaseModel):
-
+class DeviceSession(BaseModel):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="device_sessions",
+    )
+
+    auth_type = models.CharField(
+        max_length=10,
+        choices=AuthType.choices,
     )
 
     device_name = models.CharField(
@@ -32,6 +37,15 @@ class DeviceSession( BaseModel):
     refresh_token_jti = models.CharField(
         max_length=255,
         unique=True,
+        null=True,
+        blank=True,
+    )
+
+    django_session_key = models.CharField(
+        max_length=40,
+        unique=True,
+        null=True,
+        blank=True,
     )
 
     last_used_at = models.DateTimeField(
