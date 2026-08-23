@@ -1,6 +1,10 @@
 import pytest
+from datetime import timedelta
+
+from django.utils import timezone
 from rest_framework import status
 
+from apps.chat.models import Message
 from apps.chat.services import create_direct_conversation, send_message
 
 pytestmark = pytest.mark.django_db
@@ -22,8 +26,20 @@ def test_conversation_list_returns_only_own_conversations(auth_client, user_a, u
     response = client.get('/api/v1/chat/conversations/')
 
     assert response.status_code == status.HTTP_200_OK
-    returned_ids = [item['id'] for item in response.data]
+    returned_ids = [item['id'] for item in response.data['results']]
     assert str(conversation.id) in returned_ids
+
+
+def test_conversation_list_is_paginated(auth_client, user_a, user_b):
+    """The conversation list must come back in the paginated envelope, not a bare list."""
+    create_direct_conversation(creator=user_a, other_user=user_b)
+    client = auth_client(user_a)
+
+    response = client.get('/api/v1/chat/conversations/')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'results' in response.data
+    assert 'count' in response.data
 
 
 def test_create_direct_conversation_success(auth_client, user_a, user_b):
@@ -64,7 +80,31 @@ def test_member_can_list_messages(auth_client, user_a, user_b):
     response = client.get(f'/api/v1/chat/conversations/{conversation.id}/messages/')
 
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 1
+    assert len(response.data['results']) == 1
+
+
+def test_message_list_is_cursor_paginated(auth_client, user_a, user_b):
+    """
+    The message list must be cursor-paginated: capped at page_size and
+    exposing a `next` cursor to walk into older history — never the whole
+    conversation at once.
+    """
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    base = timezone.now()
+    for i in range(35):
+        message = send_message(conversation_id=conversation.id, sender=user_a, content=f'msg {i}')
+        # Space timestamps out so cursor ordering is deterministic even on
+        # clocks with coarse resolution (created_at drives the cursor).
+        Message.objects.filter(id=message.id).update(created_at=base + timedelta(seconds=i))
+    client = auth_client(user_a)
+
+    response = client.get(f'/api/v1/chat/conversations/{conversation.id}/messages/')
+
+    assert response.status_code == status.HTTP_200_OK
+    assert 'next' in response.data
+    assert 'previous' in response.data
+    assert len(response.data['results']) == 30  # page_size, not all 35
+    assert response.data['next'] is not None
 
 
 def test_non_member_cannot_list_messages(auth_client, outsider, user_a, user_b):

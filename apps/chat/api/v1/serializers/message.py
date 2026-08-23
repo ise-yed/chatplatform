@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.chat.models import Message
+from apps.common.constants import MAX_MESSAGE_LENGTH
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -25,4 +26,4 @@ class SendMessageSerializer(serializers.Serializer):
     کاربر می‌تونست جعل هویت کنه (مثلاً پیامی رو به اسم یوزر دیگه بفرسته)
     یا پیام رو تو یه گفتگوی دیگه تزریق کنه.
     """
-    content = serializers.CharField(max_length=5000)
+    content = serializers.CharField(max_length=MAX_MESSAGE_LENGTH)

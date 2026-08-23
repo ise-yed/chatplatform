@@ -57,3 +57,12 @@ def mock_broadcast(monkeypatch):
 def mock_read_receipt_broadcast(monkeypatch):
     """Same reasoning as mock_broadcast — keeps read-receipt tests off the real Redis channel layer."""
     monkeypatch.setattr('apps.chat.services.participant.broadcast_read_receipt', lambda **kwargs: None)
+    
+    
+@pytest.fixture(autouse=True)
+def disable_blacklist_for_tests(settings):
+    settings.SIMPLE_JWT = {
+        **settings.SIMPLE_JWT,
+        'BLACKLIST_AFTER_ROTATION': False,
+        'ROTATE_REFRESH_TOKENS': False,
+    }

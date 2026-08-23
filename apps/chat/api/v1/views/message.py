@@ -7,6 +7,7 @@ from apps.chat.permissions import IsConversationParticipant
 from apps.chat.api.v1.serializers import MessageSerializer, SendMessageSerializer
 from apps.chat.selectors import get_messages_for_conversation
 from apps.chat.services import send_message
+from apps.common.pagination import MessageCursorPagination
 
 
 class MessageListCreateApi(APIView):
@@ -18,7 +19,14 @@ class MessageListCreateApi(APIView):
 
     def get(self, request, conversation_id):
         messages = get_messages_for_conversation(conversation_id=conversation_id)
-        return Response(MessageSerializer(messages, many=True).data)
+
+        # Cursor-paginate so we never serialize an entire (unbounded)
+        # conversation history in one response. The paginator applies
+        # its own '-created_at' ordering; `next` walks into older messages.
+        paginator = MessageCursorPagination()
+        page = paginator.paginate_queryset(messages, request, view=self)
+        serializer = MessageSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, conversation_id):
         serializer = SendMessageSerializer(data=request.data)

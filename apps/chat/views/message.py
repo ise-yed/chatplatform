@@ -1,6 +1,8 @@
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseForbidden
+from django.core.exceptions import ValidationError
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
 from django.shortcuts import  render
+from django.views.decorators.http import require_POST
 from apps.chat.selectors import (
     get_conversation_for_user,
     get_messages_for_conversation,
@@ -35,21 +37,30 @@ def conversation_detail_view(request, conversation_id):
     
 
 @login_required
+@require_POST
 def send_message_view(request, conversation_id):
     """
-    Handles the HTMX POST for sending a new message. Returns only the
-    HTML fragment for the newly created message (not a full page) —
-    HTMX swaps this fragment into the message list on the client side
-    without a full page reload.
+    Sends a new message to a conversation from the web client.
+
+    POST-only: sending a message changes state, so a GET (or any other
+    method) is rejected with 405 by @require_POST. Content validation
+    (non-empty, max length) is delegated to the send_message service so
+    the web path and the mobile API path enforce identical domain rules;
+    a ValidationError from the service becomes a 400 here.
+
+    Returns 204 No Content on success — the new message reaches the
+    client over the WebSocket broadcast, so there's no body to return.
     """
     if not is_user_participant(conversation_id=conversation_id, user=request.user):
         return HttpResponseForbidden('You are not a participant of this conversation.')
 
-    content = request.POST.get('content', '').strip()
-    if not content:
-        return HttpResponseForbidden('Message content cannot be empty.')
-
-    message = send_message(conversation_id=conversation_id, sender=request.user, content=content)
+    try:
+        send_message(
+            conversation_id=conversation_id,
+            sender=request.user,
+            content=request.POST.get('content', ''),
+        )
+    except ValidationError as exc:
+        return HttpResponseBadRequest(' '.join(exc.messages))
 
     return HttpResponse(status=204)
-    # return render(request, 'chat/partials/message_item.html', {'message': message})

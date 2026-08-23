@@ -5,7 +5,15 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 from apps.chat.selectors.participant import is_user_participant
 from apps.chat.services.participant import mark_conversation_as_read
-from apps.common.constants import  BROADCAST_PRESENCE,  BROADCAST_TYPING, NEW_MESSAGE, READ_RECEIPT, TYPING
+from apps.common.constants import (
+    BROADCAST_PRESENCE,
+    BROADCAST_TYPING,
+    NEW_MESSAGE,
+    READ_RECEIPT,
+    SESSION_REVOKED,
+    TYPING,
+    device_session_group,
+)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -33,6 +41,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
         self.group_name = f'conversation_{self.conversation_id}'
         self.user = self.scope['user']
+        self.session_id = self.scope.get('session_id')
 
         if self.user.is_anonymous:
             await self.close(code=4001)
@@ -46,6 +55,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
+
+        # Only JWT-authenticated connections carry a session_id (see
+        # apps.chat.middleware.get_user_and_session_from_token). Joining
+        # this group is what lets broadcast_session_revoked() reach and
+        # force-close this exact connection the moment its DeviceSession
+        # gets revoked, instead of leaving it open until the access
+        # token happens to expire on its own.
+        if self.session_id:
+            self.session_group_name = device_session_group(self.session_id)
+            await self.channel_layer.group_add(self.session_group_name, self.channel_name)
+
         await self.accept()
         
 
@@ -57,6 +77,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(
                 self.group_name,
+                self.channel_name,
+            )
+
+        if hasattr(self, 'session_group_name'):
+            await self.channel_layer.group_discard(
+                self.session_group_name,
                 self.channel_name,
             )
 
@@ -160,3 +186,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'event': READ_RECEIPT,
             'data': {'user_id': event['user_id'], 'last_read_message_id': event['last_read_message_id']},
         }))
+
+    async def broadcast_session_revoked(self, event):
+        """
+        Triggered by apps.accounts.services.realtime.broadcast_session_revoked
+        right after a DeviceSession is revoked (single-session revoke or
+        "log out everywhere"). Tells the client why the socket is closing
+        so it can show a proper message instead of silently retrying,
+        then force-closes the connection — this device stops receiving
+        chat events immediately rather than waiting for its access token
+        to expire on its own.
+        """
+        await self.send(text_data=json.dumps({'event': SESSION_REVOKED, 'data': {}}))
+        await self.close(code=4008)

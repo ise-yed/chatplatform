@@ -2,6 +2,7 @@ import os
 
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.security.websocket import AllowedHostsOriginValidator
 from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
@@ -15,7 +16,13 @@ from apps.chat.routing import websocket_urlpatterns as chat_websocket_urlpattern
 
 application = ProtocolTypeRouter({
     'http': django_asgi_app,
-    'websocket': AuthMiddlewareStack(
-        JWTAuthMiddleware(URLRouter(accounts_websocket_urlpatterns + chat_websocket_urlpatterns))
+    # AllowedHostsOriginValidator rejects WebSocket handshakes whose Origin
+    # header isn't in ALLOWED_HOSTS, before any auth runs. Without it any
+    # website could open an authenticated socket against us using the
+    # visitor's session cookie (cross-site WebSocket hijacking).
+    'websocket': AllowedHostsOriginValidator(
+        AuthMiddlewareStack(
+            JWTAuthMiddleware(URLRouter(accounts_websocket_urlpatterns + chat_websocket_urlpatterns))
+        )
     ),
 })

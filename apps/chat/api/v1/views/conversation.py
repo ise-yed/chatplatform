@@ -7,6 +7,7 @@ from apps.accounts.models import User
 from apps.chat.api.v1.serializers import ConversationListSerializer, CreateDirectConversationSerializer
 from apps.chat.selectors import get_conversations_for_user
 from apps.chat.services import create_direct_conversation
+from apps.common.pagination import StandardResultsSetPagination
 
 
 class ConversationListCreateApi(APIView):
@@ -17,8 +18,15 @@ class ConversationListCreateApi(APIView):
 
     def get(self, request):
         conversations = get_conversations_for_user(user=request.user)
-        serializer = ConversationListSerializer(conversations, many=True)
-        return Response(serializer.data)
+
+        # Paginate so a user with a large number of conversations doesn't
+        # force us to serialize them all in one response. The queryset is
+        # already ordered newest-activity-first (Conversation.Meta ordering
+        # = -updated_at), which the send_message service keeps fresh.
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(conversations, request, view=self)
+        serializer = ConversationListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = CreateDirectConversationSerializer(data=request.data)
