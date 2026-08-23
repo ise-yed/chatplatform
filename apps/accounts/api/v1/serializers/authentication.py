@@ -55,9 +55,7 @@ class DeviceSessionSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_is_active(self, obj):
-        return obj.revoked_at is None and (
-            obj.expires_at is None or obj.expires_at > timezone.now()
-        )
+        return obj.is_active
 
 
 class DeviceSessionRefreshSerializer(TokenRefreshSerializer):

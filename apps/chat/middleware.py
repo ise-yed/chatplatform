@@ -2,8 +2,6 @@ from urllib.parse import parse_qs
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 from django.contrib.auth.models import AnonymousUser
-from django.db.models import Q
-from django.utils import timezone
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -13,13 +11,12 @@ def get_user_and_session_from_token(token):
     """
     Resolves a JWT access token into (User, session_id).
 
-    Unlike DRF's JWTAuthentication (used for regular API requests),
-    this also verifies the DeviceSession tied to the token's "sid"
-    claim is still active. Without this check, a WebSocket could be
-    opened with an access token belonging to a session the user had
-    already revoked (e.g. from the "my devices" screen) — the token
-    itself would still verify fine since access tokens aren't
-    blacklisted, only refresh tokens are.
+    Also verifies the DeviceSession tied to the token's "sid" claim is
+    still active (same DeviceSession.is_active property used by
+    apps.accounts.authentication.DeviceSessionAuthentication for
+    regular API requests, and by DeviceSessionSerializer) — a
+    WebSocket shouldn't be openable with an access token belonging to
+    an already-revoked session any more than a REST call should.
 
     Returns (AnonymousUser(), None) for any invalid, expired, or
     revoked case so the caller has one failure path to handle.
@@ -39,13 +36,8 @@ def get_user_and_session_from_token(token):
         return AnonymousUser(), None
 
     if session_id is not None:
-        session_is_active = DeviceSession.objects.filter(
-            Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()),
-            id=session_id,
-            revoked_at__isnull=True,
-        ).exists()
-
-        if not session_is_active:
+        session = DeviceSession.objects.filter(id=session_id, user=user).first()
+        if session is None or not session.is_active:
             return AnonymousUser(), None
 
     return user, session_id

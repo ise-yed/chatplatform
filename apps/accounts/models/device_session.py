@@ -3,6 +3,7 @@ from apps.common.models import BaseModel
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class DeviceSession( BaseModel):
@@ -55,3 +56,14 @@ class DeviceSession( BaseModel):
     @property
     def is_revoked(self):
         return self.revoked_at is not None
+
+    @property
+    def is_active(self):
+        """
+        Single source of truth for "is this session still usable" —
+        used by DeviceSessionSerializer, the JWT WebSocket middleware
+        (apps.chat.middleware), and DeviceSessionAuthentication
+        (apps.accounts.authentication) so the three places that need
+        to answer this question can't quietly drift out of sync.
+        """
+        return not self.is_revoked and (self.expires_at is None or self.expires_at > timezone.now())

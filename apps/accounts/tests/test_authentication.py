@@ -97,6 +97,38 @@ def test_logout_revokes_only_current_device_session(api_client, user):
     assert DeviceSession.objects.get(id=second_session_id).revoked_at is None
 
 
+def test_access_token_stops_working_immediately_after_its_session_is_revoked(api_client, user):
+    """
+    Regression test for DeviceSessionAuthentication: revoking a session
+    used to leave its access token working on every authenticated
+    endpoint until natural expiry (JWTAuthentication alone doesn't
+    check DeviceSession status). This proves revoke is now immediate.
+    """
+    logged_in = login(api_client, device_name='Laptop')
+    access = logged_in.data['tokens']['access']
+
+    api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+    api_client.post('/api/v1/accounts/logout/', format='json')
+
+    # Same still-unexpired access token, same client — logout revoked
+    # the session, so this must now be rejected instead of succeeding.
+    response = api_client.get('/api/v1/accounts/sessions/', format='json')
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_access_token_for_other_users_untouched_session_still_works(api_client, user):
+    """Sanity check the new auth class isn't over-broad — a token whose session is still active must keep working."""
+    logged_in = login(api_client, device_name='Laptop')
+    login(api_client, device_name='Phone')  # a second, unrelated session for the same user
+    access = logged_in.data['tokens']['access']
+
+    api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+    response = api_client.get('/api/v1/accounts/sessions/', format='json')
+
+    assert response.status_code == status.HTTP_200_OK
+
+
 def test_logout_all_revokes_all_device_sessions(api_client, user):
     login(api_client, device_name='Laptop')
     second = login(api_client, device_name='Phone')
