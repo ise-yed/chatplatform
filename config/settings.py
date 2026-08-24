@@ -135,7 +135,7 @@ REST_FRAMEWORK = {
         "anon": "100/day",
         "user": "1000/day",
         "login": "5/min",
-        "register": "1/hour",
+        # "register": "1/hour",
         "password_reset": "3/hour",
     },
 }

@@ -10,6 +10,70 @@ from rest_framework_simplejwt.utils import datetime_from_epoch
 from apps.accounts.models import DeviceSession, User
 
 
+class RegisterSerializer(serializers.ModelSerializer):
+    """Validate registration data and create a new user."""
+    
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        style={"input_type": "password"},
+        error_messages={
+            "min_length": "Password must be at least 8 characters long.",
+        }
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+    )
+    email = serializers.EmailField(required=True)
+    
+    class Meta:
+        model = User
+        fields = (
+            "username",
+            "email",
+            "password",
+            "password_confirm",
+            "first_name",
+            "last_name",
+        )
+        extra_kwargs = {
+            "first_name": {"required": False, "allow_blank": True},
+            "last_name": {"required": False, "allow_blank": True},
+        }
+    
+    def validate_username(self, value):
+        """Ensure username is unique and valid."""
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return value
+    
+    def validate_email(self, value):
+        """Ensure email is unique and valid."""
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def validate(self, attrs):
+        """Check that passwords match."""
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
+        return attrs
+    
+    def create(self, validated_data):
+        """Create and return the user."""
+        validated_data.pop("password_confirm")
+        
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            first_name=validated_data.get("first_name", ""),
+            last_name=validated_data.get("last_name", ""),
+        )
+        
+        return user
+
 class LoginSerializer(serializers.Serializer):
     """Validate user credentials and collect client device metadata."""
 

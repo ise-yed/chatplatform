@@ -8,6 +8,7 @@ from apps.accounts.api.v1.serializers.authentication import (
     DeviceSessionRefreshSerializer,
     DeviceSessionSerializer,
     LoginSerializer,
+    RegisterSerializer,
 )
 from apps.accounts.models import DeviceSession
 from apps.accounts.services.authentication import (
@@ -16,6 +17,37 @@ from apps.accounts.services.authentication import (
     revoke_device_session,
 )
 
+class RegisterView(APIView):
+    """
+    Register a new user account.
+    
+    Creates a new user with the provided credentials. After successful
+    registration, the user is NOT automatically logged in - they must
+    call the login endpoint separately.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = "register"
+    
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = serializer.save()
+        
+        return Response(
+            {
+                "message": "Registration successful. Please log in.",
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -113,3 +145,4 @@ class DeviceSessionRevokeView(APIView):
 
         revoke_device_session(session=session)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
