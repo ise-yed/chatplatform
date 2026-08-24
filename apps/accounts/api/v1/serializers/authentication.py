@@ -45,7 +45,7 @@ class DeviceSessionSerializer(serializers.ModelSerializer):
         model = DeviceSession
         fields = (
             "id",
-            "auth_type"
+            "auth_type",
             "device_name",
             "device_type",
             "last_used_at",

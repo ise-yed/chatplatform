@@ -43,6 +43,37 @@ def get_user_and_session_from_token(token):
     return user, session_id
 
 
+@database_sync_to_async
+def get_device_session_id_for_cookie_user(*, user, django_session_key):
+    """
+    Resolves a cookie-authenticated (web/HTMX) connection's Django
+    session key to its DeviceSession id.
+
+    Cookie-authenticated connections have no JWT "sid" claim to read,
+    but create_web_device_session (apps.accounts.services.authentication)
+    stores the Django session_key on the DeviceSession precisely so it
+    can be looked up here. Without this, a web WebSocket would never
+    join device_session_group() and broadcast_session_revoked() would
+    have no open connection to reach — "remove this device" would only
+    take effect on that browser's next plain HTTP request, not on an
+    already-open socket.
+
+    Returns None if there's no django_session_key (shouldn't happen for
+    a genuinely cookie-authenticated scope) or no matching active
+    DeviceSession.
+    """
+    if not django_session_key:
+        return None
+
+    from apps.accounts.models import DeviceSession
+
+    session = DeviceSession.objects.filter(user=user, django_session_key=django_session_key).first()
+    if session is None or not session.is_active:
+        return None
+
+    return str(session.id)
+
+
 class JWTAuthMiddleware(BaseMiddleware):
     """
     Authentication middleware for WebSocket connections.
@@ -55,16 +86,16 @@ class JWTAuthMiddleware(BaseMiddleware):
     This middleware runs AFTER channels.auth.AuthMiddlewareStack in asgi.py,
     so scope['user'] is already populated from session cookie for browser
     connections. If session already resolved a real user, this middleware
-    does nothing — it only kicks in when scope['user'] is still Anonymous.
+    only resolves that connection's DeviceSession id (see
+    get_device_session_id_for_cookie_user) — it re-authenticates only when
+    scope['user'] is still Anonymous.
     """
 
     async def __call__(self, scope, receive, send):
         current_user = scope.get('user')
-        # session_id is only ever set for JWT-authenticated connections
-        # (see get_user_and_session_from_token). Session-cookie logins
-        # don't have a DeviceSession yet, so there's nothing to force-
-        # disconnect them by — default to None so consumers can safely
-        # call scope.get('session_id') either way.
+        # session_id is what lets consumers join device_session_group()
+        # so broadcast_session_revoked() can force-close them — see
+        # apps.chat.consumers.ChatConsumer and apps.accounts.consumers.PresenceConsumer.
         scope.setdefault('session_id', None)
 
         # فقط اگر کاربر از طریق session احراز هویت نشده باشد
@@ -96,5 +127,17 @@ class JWTAuthMiddleware(BaseMiddleware):
                 scope['user'], scope['session_id'] = await get_user_and_session_from_token(token)
             else:
                 scope['user'] = AnonymousUser()
+        else:
+            # AuthMiddlewareStack already resolved a user from the
+            # session cookie. django_session's row was already deleted
+            # by revoke_device_session if that session had been revoked,
+            # so AuthMiddlewareStack would have failed to resolve a user
+            # in that case — we wouldn't even get here. What's still
+            # missing is the DeviceSession id itself, for group_add().
+            django_session = scope.get('session')
+            django_session_key = getattr(django_session, 'session_key', None)
+            scope['session_id'] = await get_device_session_id_for_cookie_user(
+                user=current_user, django_session_key=django_session_key,
+            )
 
         return await super().__call__(scope, receive, send)
