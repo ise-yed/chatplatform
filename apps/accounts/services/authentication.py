@@ -9,6 +9,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.accounts.choices import AuthType
 from apps.accounts.models import DeviceSession
 from apps.accounts.services.realtime import broadcast_session_revoked
+import secrets
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.conf import settings
+from django.utils import timezone
 
 
 @transaction.atomic
@@ -134,3 +139,4 @@ def revoke_all_device_sessions(*, user, except_session_id=None):
         revoke_device_session(session=session)
 
     return len(sessions)
+

@@ -183,12 +183,28 @@ MAILERS = {
 }
 
 
+
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'chat:conversation_list'
 ASGI_APPLICATION = 'config.asgi.application'
 
 REDIS_HOST = config('REDIS_HOST', default='127.0.0.1')
 REDIS_PORT = config('REDIS_PORT', default=6379, cast=int)
+
+
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',  # ✅ درسته
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/2',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',  # ✅ درسته
+            'PASSWORD': config('REDIS_PASSWORD', default=''),
+            'SOCKET_TIMEOUT': 5,
+            'SOCKET_CONNECT_TIMEOUT': 5,
+        }
+    }
+}
 
 CHANNEL_LAYERS = {
     'default': {

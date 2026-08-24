@@ -8,6 +8,7 @@ from django.utils import timezone
 from rest_framework_simplejwt.utils import datetime_from_epoch
 
 from apps.accounts.models import DeviceSession, User
+from apps.accounts.services.authentication import revoke_all_device_sessions
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -168,3 +169,109 @@ class DeviceSessionRefreshSerializer(TokenRefreshSerializer):
         session.save(update_fields=update_fields)
 
         return data
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Change password for authenticated user."""
+    
+    current_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        required=True,
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        required=True,
+        min_length=8,
+    )
+    new_password_confirm = serializers.CharField(
+        write_only=True,
+        style={"input_type": "password"},
+        required=True,
+    )
+    
+    def validate_current_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+    
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Passwords do not match."}
+            )
+        
+        if attrs["current_password"] == attrs["new_password"]:
+            raise serializers.ValidationError(
+                {"new_password": "New password cannot be the same as current password."}
+            )
+        
+        return attrs
+    
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password", "updated_at"])
+        return user
+    
+    
+# apps/accounts/api/v1/serializers/authentication.py
+
+class PasswordResetRequestOTPSerializer(serializers.Serializer):
+    """Request OTP for password reset."""
+    
+    email = serializers.EmailField()
+    
+    def validate_email(self, value):
+        try:
+            user = User.objects.get(email__iexact=value, is_active=True)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("No active user found with this email.")
+        
+        self.context["user"] = user
+        return value
+
+
+class PasswordResetOTPSerializer(serializers.Serializer):
+    """Verify OTP and reset password."""
+    
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    new_password_confirm = serializers.CharField(min_length=8, write_only=True)
+    
+    def validate(self, attrs):
+        # پیدا کردن کاربر
+        try:
+            user = User.objects.get(email__iexact=attrs["email"], is_active=True)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"email": "No active user found with this email."})
+        
+        # تایید OTP
+        from apps.accounts.services.otp import OTPService
+        is_valid, error = OTPService.verify_otp(user.id, attrs["code"])
+        
+        if not is_valid:
+            raise serializers.ValidationError({"code": error})
+        
+        # تایید رمز
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError({"new_password_confirm": "Passwords do not match."})
+        
+        self.context["user"] = user
+        return attrs
+    
+    @transaction.atomic
+    def save(self):
+        user = self.context["user"]
+        
+        # تغییر رمز
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password", "updated_at"])
+        
+        # خروج از همه دستگاه‌ها
+        revoke_all_device_sessions(user=user)
+        
+        return user

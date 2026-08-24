@@ -1,13 +1,16 @@
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework.views import APIView, settings
 from rest_framework.throttling import ScopedRateThrottle
 
 from apps.accounts.api.v1.serializers.authentication import (
+    ChangePasswordSerializer,
     DeviceSessionRefreshSerializer,
     DeviceSessionSerializer,
     LoginSerializer,
+    PasswordResetOTPSerializer,
+    PasswordResetRequestOTPSerializer,
     RegisterSerializer,
 )
 from apps.accounts.models import DeviceSession
@@ -146,3 +149,76 @@ class DeviceSessionRevokeView(APIView):
         revoke_device_session(session=session)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+
+class PasswordResetRequestOTPView(APIView):
+    """Request OTP code."""
+    
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = "password_reset"
+    
+    def post(self, request):
+        serializer = PasswordResetRequestOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = serializer.context["user"]
+        
+        # تولید OTP
+        from apps.accounts.services.otp import OTPService
+        code = OTPService.create_otp(user.id, purpose="password_reset")
+        
+        # ارسال ایمیل
+        OTPService.send_otp_email(user.email, code)
+        
+        return Response({
+            "message": "OTP code sent to your email.",
+            "expires_in_minutes": 10,
+        }, status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmOTPView(APIView):
+    """Reset password using OTP."""
+    
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = PasswordResetOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        return Response({
+            "message": "Password reset successfully.",
+        }, status=status.HTTP_200_OK)
+   
+            
+class ChangePasswordView(APIView):
+    """
+    Change password for authenticated user.
+    
+    Requires current password for verification. After successful change,
+    revokes all other sessions to force re-login everywhere except current device.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
+        session_id = request.auth.get("sid") if request.auth else None
+        revoke_all_device_sessions(
+            user=request.user,
+            except_session_id=session_id,
+            
+        )
+        
+        return Response(
+            {
+                "message": "Password changed successfully. All other devices have been logged out.",
+            },
+            status=status.HTTP_200_OK,
+        )

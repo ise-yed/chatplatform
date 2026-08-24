@@ -1,11 +1,14 @@
 from django.urls import path
 
 from apps.accounts.api.v1.views.authentication import (
+    ChangePasswordView,
     DeviceSessionListView,
     DeviceSessionRevokeView,
     LoginView,
     LogoutAllView,
     LogoutView,
+    PasswordResetConfirmOTPView,
+    PasswordResetRequestOTPView,
     RefreshTokenView,
     RegisterView,
 )
@@ -20,4 +23,8 @@ urlpatterns = [
     path("logout-all/", LogoutAllView.as_view(), name="logout_all"),
     path("sessions/", DeviceSessionListView.as_view(), name="sessions"),
     path("sessions/<uuid:session_id>/", DeviceSessionRevokeView.as_view(), name="session_revoke"),
+    path("change-password/", ChangePasswordView.as_view(), name="change_password"),
+    path("password-reset/request/", PasswordResetRequestOTPView.as_view(), name="password_reset_request"),
+    path("password-reset/confirm/", PasswordResetConfirmOTPView.as_view(), name="password_reset_confirm"),
+    
 ]
