@@ -1,4 +1,5 @@
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from apps.chat.services import mark_conversation_as_read, send_message
 
 from datetime import timedelta
@@ -163,3 +164,46 @@ def test_send_message_strips_surrounding_whitespace(user_a, user_b):
     conversation = create_direct_conversation(creator=user_a, other_user=user_b)
     message = send_message(conversation_id=conversation.id, sender=user_a, content='  hi  ')
     assert message.content == 'hi'
+
+def test_send_image_message_saves_attachment(user_a, user_b):
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    image = SimpleUploadedFile('photo.jpg', b'fake-image', content_type='image/jpeg')
+
+    message = send_message(
+        conversation_id=conversation.id,
+        sender=user_a,
+        message_type='image',
+        attachment=image,
+    )
+
+    assert message.type == 'image'
+    assert message.attachment
+    assert message.file_name == 'photo.jpg'
+    assert message.mime_type == 'image/jpeg'
+    assert message.file_size == len(b'fake-image')
+
+
+def test_send_music_message_rejects_non_audio(user_a, user_b):
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    image = SimpleUploadedFile('photo.jpg', b'fake-image', content_type='image/jpeg')
+
+    with pytest.raises(ValidationError):
+        send_message(
+            conversation_id=conversation.id,
+            sender=user_a,
+            message_type='music',
+            attachment=image,
+        )
+
+
+def test_send_text_message_rejects_attachment(user_a, user_b):
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    file = SimpleUploadedFile('note.txt', b'hello', content_type='text/plain')
+
+    with pytest.raises(ValidationError):
+        send_message(
+            conversation_id=conversation.id,
+            sender=user_a,
+            message_type='text',
+            attachment=file,
+        )

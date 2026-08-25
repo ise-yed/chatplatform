@@ -27,7 +27,12 @@ def broadcast_new_message(*, message):
             'conversation_id': str(message.conversation_id),
             'sender_id': str(message.sender_id),
             'sender_username': message.sender.username,
+            'message_type': message.type,
             'content': message.content,
+            'attachment': message.attachment.url if message.attachment else None,
+            'file_name': message.file_name,
+            'file_size': message.file_size,
+            'mime_type': message.mime_type,
             'created_at': message.created_at.isoformat(),
         },
     )

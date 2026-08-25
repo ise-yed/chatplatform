@@ -13,5 +13,8 @@ class ParticipantRole(models.TextChoices):
 
 class MessageType(models.TextChoices):
     TEXT = 'text', 'Text'
-    IMAGE = 'image', 'Image'
     FILE = 'file', 'File'
+    IMAGE = 'image', 'Image'
+    MUSIC = 'music', 'Music'
+    VIDEO = 'video', 'Video'
+    DOCUMENT = 'document', 'Document'

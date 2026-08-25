@@ -1,5 +1,7 @@
 
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import include, path
 
 urlpatterns = [
@@ -9,3 +11,6 @@ urlpatterns = [
     path('api/v1/chat/', include('apps.chat.api.v1.urls')),
     path('chat/', include('apps.chat.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

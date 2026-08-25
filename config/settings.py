@@ -195,10 +195,10 @@ REDIS_PORT = config('REDIS_PORT', default=6379, cast=int)
 
 CACHES = {
     'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',  # ✅ درسته
+        'BACKEND': 'django_redis.cache.RedisCache',  
         'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/2',
         'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',  # ✅ درسته
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',  
             'PASSWORD': config('REDIS_PASSWORD', default=''),
             'SOCKET_TIMEOUT': 5,
             'SOCKET_CONNECT_TIMEOUT': 5,

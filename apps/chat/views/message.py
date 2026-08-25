@@ -58,7 +58,9 @@ def send_message_view(request, conversation_id):
         send_message(
             conversation_id=conversation_id,
             sender=request.user,
+            message_type=request.POST.get('type', 'text'),
             content=request.POST.get('content', ''),
+            attachment=request.FILES.get('attachment'),
         )
     except ValidationError as exc:
         return HttpResponseBadRequest(' '.join(exc.messages))

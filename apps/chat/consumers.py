@@ -162,6 +162,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'sender_username': event['sender_username'],
                 'content': event['content'],
                 'created_at': event['created_at'],
+                'type': event['message_type'],
+                'attachment_url': event['attachment'],
+                'file_name': event['file_name'],
+                'file_size': event['file_size'],
+
             },
         }))
 

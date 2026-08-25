@@ -1,6 +1,7 @@
 import pytest
 from datetime import timedelta
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from rest_framework import status
 
@@ -163,3 +164,19 @@ def test_sent_message_response_includes_sender_username(auth_client, user_a, use
     )
 
     assert response.data['sender_username'] == user_a.username
+
+def test_member_can_send_image(auth_client, user_a, user_b):
+    conversation = create_direct_conversation(creator=user_a, other_user=user_b)
+    client = auth_client(user_a)
+    image = SimpleUploadedFile('photo.jpg', b'fake-image', content_type='image/jpeg')
+
+    response = client.post(
+        f'/api/v1/chat/conversations/{conversation.id}/messages/',
+        data={'type': 'image', 'attachment': image},
+        format='multipart',
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data['type'] == 'image'
+    assert response.data['file_name'] == 'photo.jpg'
+    assert response.data['attachment_url']
