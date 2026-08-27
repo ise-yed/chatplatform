@@ -19,3 +19,21 @@ class IsConversationParticipant(BasePermission):
     def has_permission(self, request, view):
         conversation_id = view.kwargs.get('conversation_id')
         return is_user_participant(conversation_id=conversation_id, user=request.user)
+    
+    
+    
+# apps/chat/permissions.py — اضافه به فایل موجود
+
+from apps.chat.selectors import is_conversation_admin
+
+
+class IsConversationAdmin(BasePermission):
+    """
+    فقط به ادمین‌های گفتگوی گروهی (conversation_id در URL) اجازه‌ی
+    دسترسی می‌ده. برای عملیات مدیریت اعضا (اضافه/حذف) استفاده می‌شه.
+    """
+    message = 'فقط ادمین‌های گروه به این عملیات دسترسی دارن.'
+
+    def has_permission(self, request, view):
+        conversation_id = view.kwargs.get('conversation_id')
+        return is_conversation_admin(conversation_id=conversation_id, user=request.user)

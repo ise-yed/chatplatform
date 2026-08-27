@@ -43,3 +43,30 @@ class CreateDirectConversationSerializer(serializers.Serializer):
     به‌جای خودش یه یوزر دیگه رو به‌عنوان سازنده جا بزنه).
     """
     other_user_id = serializers.UUIDField()
+    
+    
+
+class CreateGroupConversationSerializer(serializers.Serializer):
+    """
+    ورودی ساخت گروه. participant_ids اختیاریه — یه گروه می‌تونه فقط
+    با سازنده ساخته بشه و بعداً از طریق endpoint اضافه‌کردن عضو رشد کنه.
+    """
+    title = serializers.CharField(max_length=255)
+    description = serializers.CharField(required=False, allow_blank=True, default='')
+    avatar = serializers.ImageField(required=False, allow_null=True)
+    participant_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=False, allow_empty=True, default=list
+    )
+
+
+class AddParticipantSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+
+
+class GroupParticipantSerializer(serializers.Serializer):
+    """
+    یه عضو گروه به همراه نقشش — برای این‌که UI بتونه بج «ادمین» رو نشون بده.
+    """
+    id = serializers.UUIDField(source='user.id')
+    username = serializers.CharField(source='user.username')
+    role = serializers.CharField()

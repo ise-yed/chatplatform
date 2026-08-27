@@ -1,13 +1,14 @@
 import pytest
-from apps.chat.selectors import get_other_participant_last_read_message
-from apps.chat.services import mark_conversation_as_read
 from apps.chat.selectors import (
     get_conversation_for_user,
     get_conversations_for_user,
     get_messages_for_conversation,
     is_user_participant,
+    get_group_participants, 
+    is_conversation_admin,
+    get_latest_other_participant_read_message
 )
-from apps.chat.services import create_direct_conversation, send_message
+from apps.chat.services import create_direct_conversation, send_message,create_group_conversation ,mark_conversation_as_read
 
 pytestmark = pytest.mark.django_db
 
@@ -77,7 +78,7 @@ def test_get_messages_for_conversation_excludes_soft_deleted(user_a, user_b):
 def test_get_other_participant_last_read_message_returns_none_initially(user_a, user_b):
     """Before anyone reads anything, this must be None."""
     conversation = create_direct_conversation(creator=user_a, other_user=user_b)
-    result = get_other_participant_last_read_message(conversation_id=conversation.id, user=user_a)
+    result = get_latest_other_participant_read_message(conversation_id=conversation.id, user=user_a)
     assert result is None
 
 
@@ -87,5 +88,23 @@ def test_get_other_participant_last_read_message_reflects_the_other_users_read(u
     message = send_message(conversation_id=conversation.id, sender=user_a, content='hi')
     mark_conversation_as_read(conversation_id=conversation.id, user=user_b)
 
-    result = get_other_participant_last_read_message(conversation_id=conversation.id, user=user_a)
+    result = get_latest_other_participant_read_message(conversation_id=conversation.id, user=user_a)
     assert result == message
+    
+
+
+
+def test_is_conversation_admin_true_for_admin(user_a):
+    conversation = create_group_conversation(creator=user_a, title='Team')
+    assert is_conversation_admin(conversation_id=conversation.id, user=user_a) is True
+
+
+def test_is_conversation_admin_false_for_member(user_a, user_b):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    assert is_conversation_admin(conversation_id=conversation.id, user=user_b) is False
+
+
+def test_get_group_participants_returns_all_members(user_a, user_b):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    user_ids = {p.user_id for p in get_group_participants(conversation_id=conversation.id)}
+    assert user_ids == {user_a.id, user_b.id}

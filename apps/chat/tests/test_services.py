@@ -1,6 +1,7 @@
+from uuid import uuid4
+
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from apps.chat.services import mark_conversation_as_read, send_message
 
 from datetime import timedelta
 
@@ -8,8 +9,19 @@ from django.core.exceptions import ValidationError
 
 from apps.chat.choices import ConversationType, ParticipantRole
 from apps.chat.models import Conversation, Message, Participant
-from apps.chat.services import create_direct_conversation, send_message
 from apps.common.constants import MAX_MESSAGE_LENGTH
+
+from apps.chat.services import (
+    add_participant,
+    create_group_conversation,
+    leave_conversation,
+    remove_participant,
+    create_direct_conversation,
+    send_message,
+    mark_conversation_as_read
+)
+from apps.common.constants import MAX_GROUP_PARTICIPANTS
+from django.core.exceptions import PermissionDenied
 
 pytestmark = pytest.mark.django_db
 
@@ -207,3 +219,76 @@ def test_send_text_message_rejects_attachment(user_a, user_b):
             message_type='text',
             attachment=file,
         )
+
+
+
+# conversation group tests
+def test_create_group_conversation_sets_group_type(user_a):
+    conversation = create_group_conversation(creator=user_a, title='Team')
+    assert conversation.type == ConversationType.GROUP
+
+
+def test_create_group_conversation_makes_creator_admin(user_a):
+    conversation = create_group_conversation(creator=user_a, title='Team')
+    participant = Participant.objects.get(conversation=conversation, user=user_a)
+    assert participant.role == ParticipantRole.ADMIN
+
+
+def test_create_group_conversation_adds_members(user_a, user_b, outsider):
+    conversation = create_group_conversation(
+        creator=user_a, title='Team', participant_ids=[user_b.id, outsider.id]
+    )
+    roles = dict(
+        Participant.objects.filter(conversation=conversation).values_list('user_id', 'role')
+    )
+    assert roles[user_b.id] == ParticipantRole.MEMBER
+    assert roles[outsider.id] == ParticipantRole.MEMBER
+
+
+def test_create_group_conversation_requires_title(user_a):
+    with pytest.raises(ValidationError):
+        create_group_conversation(creator=user_a, title='   ')
+
+
+def test_create_group_conversation_rejects_too_many_members(user_a):
+    fake_ids = [uuid4() for _ in range(MAX_GROUP_PARTICIPANTS)]  # + creator = over the cap
+    with pytest.raises(ValidationError):
+        create_group_conversation(creator=user_a, title='Big', participant_ids=fake_ids)
+
+
+def test_admin_can_add_participant(user_a, user_b, outsider):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    add_participant(conversation_id=conversation.id, actor=user_a, user=outsider)
+    assert Participant.objects.filter(conversation=conversation, user=outsider).exists()
+
+
+def test_non_admin_cannot_add_participant(user_a, user_b, outsider):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    with pytest.raises(PermissionDenied):
+        add_participant(conversation_id=conversation.id, actor=user_b, user=outsider)
+
+
+def test_admin_can_remove_participant(user_a, user_b):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    remove_participant(conversation_id=conversation.id, actor=user_a, user_id=user_b.id)
+    assert not Participant.objects.filter(conversation=conversation, user=user_b).exists()
+
+
+def test_cannot_remove_only_admin(user_a, user_b):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    # user_b is a MEMBER, but has admin rights via bug injection isn't valid here;
+    # instead: user_a (the only admin) tries to remove themself via remove_participant
+    with pytest.raises(ValidationError):
+        remove_participant(conversation_id=conversation.id, actor=user_a, user_id=user_a.id)
+
+
+def test_member_can_leave_conversation(user_a, user_b):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    leave_conversation(conversation_id=conversation.id, user=user_b)
+    assert not Participant.objects.filter(conversation=conversation, user=user_b).exists()
+
+
+def test_only_admin_cannot_leave(user_a, user_b):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    with pytest.raises(ValidationError):
+        leave_conversation(conversation_id=conversation.id, user=user_a)

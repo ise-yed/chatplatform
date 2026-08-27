@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework import status
 
 from apps.chat.models import Message
-from apps.chat.services import create_direct_conversation, send_message
+from apps.chat.services import create_direct_conversation, send_message ,create_group_conversation
 
 pytestmark = pytest.mark.django_db
 
@@ -180,3 +180,40 @@ def test_member_can_send_image(auth_client, user_a, user_b):
     assert response.data['type'] == 'image'
     assert response.data['file_name'] == 'photo.jpg'
     assert response.data['attachment_url']
+
+
+def test_create_group_conversation_endpoint(auth_client, user_a, user_b):
+    client = auth_client(user_a)
+    response = client.post(
+        '/api/v1/chat/conversations/groups/',
+        {'title': 'Team', 'participant_ids': [str(user_b.id)]},
+    )
+    assert response.status_code == 201
+    assert response.data['type'] == 'group'
+
+
+def test_add_participant_requires_admin(auth_client, user_a, user_b, outsider):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    client = auth_client(user_b)  # عضو عادی، نه ادمین
+    response = client.post(
+        f'/api/v1/chat/conversations/{conversation.id}/participants/',
+        {'user_id': str(outsider.id)},
+    )
+    assert response.status_code == 403
+
+
+def test_admin_can_add_participant_via_api(auth_client, user_a, user_b, outsider):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    client = auth_client(user_a)
+    response = client.post(
+        f'/api/v1/chat/conversations/{conversation.id}/participants/',
+        {'user_id': str(outsider.id)},
+    )
+    assert response.status_code == 201
+
+
+def test_member_can_leave_via_api(auth_client, user_a, user_b):
+    conversation = create_group_conversation(creator=user_a, title='Team', participant_ids=[user_b.id])
+    client = auth_client(user_b)
+    response = client.post(f'/api/v1/chat/conversations/{conversation.id}/leave/')
+    assert response.status_code == 204

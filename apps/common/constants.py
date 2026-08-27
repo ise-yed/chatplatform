@@ -1,6 +1,15 @@
 """
 Constants used across the entire project.
 """
+
+
+
+# Max number of participants a single group conversation can have.
+# Enforced in create_group_conversation and add_participant so both
+# entry points share the same limit.
+MAX_GROUP_PARTICIPANTS = 256
+
+
 # DOMAIN RULES
 # Max length of a chat message body. Enforced in the send_message
 # service so every transport (web view, DRF API, any future caller)
