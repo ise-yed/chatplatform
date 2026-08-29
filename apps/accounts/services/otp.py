@@ -1,18 +1,17 @@
 # apps/accounts/services/otp.py
 
-from django.core.cache import cache
-from django.core.mail import send_mail
-from django.conf import settings
-import random
 import secrets
 
+from django.conf import settings
+from django.core.cache import cache
+from django.core.mail import send_mail
 from django.utils import timezone
 
 
 class OTPService:
     """Simple OTP service using cache."""
     
-    OTP_EXPIRE_SECONDS = 600  # 10 دقیقه
+    OTP_EXPIRE_SECONDS = 600  
     MAX_ATTEMPTS = 3
     
     @staticmethod
@@ -23,7 +22,7 @@ class OTPService:
     @staticmethod
     def generate_code():
         """Generate 6-digit OTP code."""
-        return f"{random.randint(100000, 999999)}"
+        return f"{secrets.randbelow(900000) + 100000}"
     
     @staticmethod
     def create_otp(user_id, purpose="password_reset"):
@@ -33,13 +32,10 @@ class OTPService:
         """
         key = OTPService._get_key(user_id, purpose)
         
-        # حذف OTP قبلی
         cache.delete(key)
         
-        # تولید کد جدید
         code = OTPService.generate_code()
         
-        # ذخیره در کش با اطلاعات اضافی
         data = {
             "code": code,
             "attempts": 0,
@@ -61,12 +57,10 @@ class OTPService:
         if not data:
             return False, "OTP code has expired. Please request a new one."
         
-        # بررسی تعداد تلاش‌ها
         if data["attempts"] >= OTPService.MAX_ATTEMPTS:
-            cache.delete(key)  # قفل شدن
+            cache.delete(key)      
             return False, "Too many failed attempts. Please request a new OTP."
         
-        # بررسی کد
         if data["code"] != code:
             data["attempts"] += 1
             remaining = OTPService.MAX_ATTEMPTS - data["attempts"]
@@ -76,7 +70,6 @@ class OTPService:
                 return False, "Too many failed attempts. Please request a new OTP."
             return False, f"Invalid code. {remaining} attempts remaining."
         
-        # موفقیت - حذف OTP
         cache.delete(key)
         return True, None
     
@@ -98,4 +91,3 @@ class OTPService:
     def send_otp_sms(phone_number, code):
         """Send OTP via SMS."""
         # پیاده‌سازی با سرویس SMS
-        pass

@@ -4,8 +4,8 @@ from uuid import uuid4
 
 from django.db import models
 
-from apps.common.models import BaseModel
 from apps.chat.choices import ConversationType
+from apps.common.models import BaseModel
 
 
 def conversation_avatar_upload_to(instance, filename):

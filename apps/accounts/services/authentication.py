@@ -3,17 +3,15 @@ import uuid
 from django.contrib.sessions.models import Session
 from django.db import transaction
 from django.utils import timezone
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.token_blacklist.models import (
+    BlacklistedToken,
+    OutstandingToken,
+)
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.choices import AuthType
 from apps.accounts.models import DeviceSession
 from apps.accounts.services.realtime import broadcast_session_revoked
-import secrets
-from django.core.mail import send_mail
-from django.urls import reverse
-from django.conf import settings
-from django.utils import timezone
 
 
 @transaction.atomic

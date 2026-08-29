@@ -3,7 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from apps.accounts.models import DeviceSession
-from apps.accounts.services.authentication import create_web_device_session, revoke_device_session
+from apps.accounts.services.authentication import (
+    create_web_device_session,
+    revoke_device_session,
+)
 
 
 def login_view(request):

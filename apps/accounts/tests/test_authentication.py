@@ -1,8 +1,7 @@
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.test import override_settings
+
 from apps.accounts.models import DeviceSession
 
 pytestmark = pytest.mark.django_db

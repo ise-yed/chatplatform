@@ -5,7 +5,10 @@ from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
-from apps.accounts.services.authentication import create_device_session, revoke_device_session
+from apps.accounts.services.authentication import (
+    create_device_session,
+    revoke_device_session,
+)
 from apps.chat.middleware import get_user_and_session_from_token
 
 pytestmark = pytest.mark.django_db(transaction=True)

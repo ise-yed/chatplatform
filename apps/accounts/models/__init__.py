@@ -1,4 +1,4 @@
-from .user import User
 from .device_session import DeviceSession
+from .user import User
 
-__all__ = ['User' , 'DeviceSession']
+__all__ = ['DeviceSession', 'User']

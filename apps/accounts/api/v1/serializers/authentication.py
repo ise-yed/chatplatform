@@ -1,10 +1,10 @@
 from django.contrib.auth import authenticate
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db import transaction
-from django.utils import timezone
 from rest_framework_simplejwt.utils import datetime_from_epoch
 
 from apps.accounts.models import DeviceSession, User
@@ -228,8 +228,8 @@ class PasswordResetRequestOTPSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email__iexact=value, is_active=True)
         except User.DoesNotExist:
-            raise serializers.ValidationError("No active user found with this email.")
-        
+            # raise serializers.ValidationError("No active user found with this email.")
+            pass
         self.context["user"] = user
         return value
 
@@ -247,7 +247,8 @@ class PasswordResetOTPSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email__iexact=attrs["email"], is_active=True)
         except User.DoesNotExist:
-            raise serializers.ValidationError({"email": "No active user found with this email."})
+            pass
+            # raise serializers.ValidationError({"email": "No active user found with this email."})
         
         # تایید OTP
         from apps.accounts.services.otp import OTPService

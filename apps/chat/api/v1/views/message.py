@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.chat.permissions import IsConversationParticipant
 from apps.chat.api.v1.serializers import MessageSerializer, SendMessageSerializer
+from apps.chat.permissions import IsConversationParticipant
 from apps.chat.selectors import get_messages_for_conversation
 from apps.chat.services import send_message
 from apps.common.pagination import MessageCursorPagination

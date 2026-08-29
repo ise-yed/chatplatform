@@ -1,12 +1,16 @@
-import pytest
 from datetime import timedelta
 
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from rest_framework import status
 
 from apps.chat.models import Message
-from apps.chat.services import create_direct_conversation, send_message ,create_group_conversation
+from apps.chat.services import (
+    create_direct_conversation,
+    create_group_conversation,
+    send_message,
+)
 
 pytestmark = pytest.mark.django_db
 

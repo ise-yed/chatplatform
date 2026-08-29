@@ -1,5 +1,5 @@
-from apps.chat.models import Participant
 from apps.chat.choices import ParticipantRole
+from apps.chat.models import Participant
 
 
 def is_user_participant(*, conversation_id, user):

@@ -1,5 +1,7 @@
 from django.db import migrations, models
+
 from apps.accounts.choices import AuthType  # مسیر درست را بررسی کنید
+
 
 def set_auth_type_based_on_session(apps, schema_editor):
     DeviceSession = apps.get_model('accounts', 'DeviceSession')

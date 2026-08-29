@@ -1,7 +1,13 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
-from apps.common.constants import BROADCAST_PRESENCE_UPDATE, BROADCAST_SESSION_REVOKED, PRESENCE_GROUP, device_session_group
+from apps.common.constants import (
+    BROADCAST_PRESENCE_UPDATE,
+    BROADCAST_SESSION_REVOKED,
+    PRESENCE_GROUP,
+    device_session_group,
+)
+
 
 async def broadcast_presence_change(*, user_id, is_online, last_seen=None):
     """

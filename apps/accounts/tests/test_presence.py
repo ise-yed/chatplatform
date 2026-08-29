@@ -12,7 +12,6 @@ from apps.accounts.services.presence import (
 )
 from apps.common.redis_client import redis_client
 
-
 pytestmark = pytest.mark.django_db(transaction=True)
 
 

@@ -1,4 +1,5 @@
 from urllib.parse import parse_qs
+
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 from django.contrib.auth.models import AnonymousUser
@@ -112,9 +113,7 @@ class JWTAuthMiddleware(BaseMiddleware):
                 auth_header = headers.get(b'authorization', b'').decode()
                 
                 # پشتیبانی از هر دو فرمت Bearer و Token
-                if auth_header.startswith('Bearer '):
-                    token = auth_header.split(' ')[1]
-                elif auth_header.startswith('Token '):
+                if auth_header.startswith('Bearer ') or auth_header.startswith('Token '):
                     token = auth_header.split(' ')[1]
             
             # 3️⃣ سوم: (اختیاری) از Cookie دریافت کن

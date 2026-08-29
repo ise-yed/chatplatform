@@ -1,8 +1,8 @@
 from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
-from rest_framework.views import APIView, settings
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 
 from apps.accounts.api.v1.serializers.authentication import (
     ChangePasswordSerializer,
@@ -19,6 +19,7 @@ from apps.accounts.services.authentication import (
     revoke_all_device_sessions,
     revoke_device_session,
 )
+
 
 class RegisterView(APIView):
     """

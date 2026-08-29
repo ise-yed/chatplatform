@@ -9,7 +9,6 @@ from apps.chat.models import Conversation, Message
 from apps.chat.services.realtime import broadcast_new_message
 from apps.common.constants import MAX_MESSAGE_LENGTH
 
-
 # ============== Constants ==============
 IMAGE_MIME_PREFIX = 'image/'
 AUDIO_MIME_PREFIX = 'audio/'
@@ -198,7 +197,6 @@ def send_message(*, conversation_id, sender, content='', message_type=MessageTyp
             updated_at=timezone.now()
         )
         
-        # Broadcast via WebSocket
         transaction.on_commit(lambda: broadcast_new_message(message=message))
     
     return message

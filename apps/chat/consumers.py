@@ -176,15 +176,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'data': {'user_id': event['user_id'], 'username': event['username'], 'is_typing': event['is_typing']},
         }))
         
-    async def broadcast_presence(self, event):
-        await self.send(text_data=json.dumps({
-            'event': BROADCAST_PRESENCE,
-            'data': {
-                'user_id': event['user_id'],
-                'username': event['username'],
-                'is_online': event['is_online'],
-            },
-        }))
+    # async def broadcast_presence(self, event):
+    #     await self.send(text_data=json.dumps({
+    #         'event': BROADCAST_PRESENCE,
+    #         'data': {
+    #             'user_id': event['user_id'],
+    #             'username': event['username'],
+    #             'is_online': event['is_online'],
+    #         },
+    #     }))
     
     async def broadcast_read_receipt(self, event):
         await self.send(text_data=json.dumps({

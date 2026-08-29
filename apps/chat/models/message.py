@@ -1,6 +1,7 @@
-from django.conf import settings
 from pathlib import Path
 from uuid import uuid4
+
+from django.conf import settings
 from django.db import models
 
 from apps.chat.choices import MessageType

@@ -1,17 +1,17 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
-from django.shortcuts import  render
+from django.shortcuts import render
 from django.views.decorators.http import require_POST
-from apps.chat.selectors import (
-    get_conversation_for_user,
-    get_messages_for_conversation,
-    get_latest_other_participant_read_message,
 
+from apps.chat.selectors import (
+    attach_other_participant,
+    get_conversation_for_user,
+    get_latest_other_participant_read_message,
+    get_messages_for_conversation,
     is_user_participant,
 )
 from apps.chat.services import send_message
-from apps.chat.selectors import attach_other_participant
 
 
 @login_required

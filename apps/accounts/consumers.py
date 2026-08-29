@@ -61,6 +61,8 @@ class PresenceConsumer(AsyncWebsocketConsumer):
         except asyncio.CancelledError:
             pass
 
+
+
     async def presence_update(self, event):
         await self.send(text_data=json.dumps({
             'event': BROADCAST_PRESENCE_UPDATE,

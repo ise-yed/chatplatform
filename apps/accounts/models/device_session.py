@@ -1,10 +1,9 @@
-import uuid
-from apps.common.models import BaseModel
-from apps.accounts.choices import AuthType
-
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+from apps.accounts.choices import AuthType
+from apps.common.models import BaseModel
 
 
 class DeviceSession(BaseModel):

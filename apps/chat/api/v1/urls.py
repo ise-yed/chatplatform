@@ -1,6 +1,13 @@
 from django.urls import path
 
-from apps.chat.api.v1.views import ConversationListCreateApi, MessageListCreateApi , GroupConversationCreateApi, GroupParticipantListCreateApi, GroupParticipantDeleteApi, GroupLeaveApi
+from apps.chat.api.v1.views import (
+    ConversationListCreateApi,
+    GroupConversationCreateApi,
+    GroupLeaveApi,
+    GroupParticipantDeleteApi,
+    GroupParticipantListCreateApi,
+    MessageListCreateApi,
+)
 
 app_name = 'chat_api_v1'
 

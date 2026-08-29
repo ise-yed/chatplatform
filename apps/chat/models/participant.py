@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.db import models
 
-from apps.common.models import BaseModel
 from apps.chat.choices import ParticipantRole
+from apps.common.models import BaseModel
 
 
 class Participant(BaseModel):

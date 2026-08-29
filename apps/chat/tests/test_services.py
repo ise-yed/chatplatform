@@ -1,27 +1,22 @@
+from datetime import timedelta
 from uuid import uuid4
 
 import pytest
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-
-from datetime import timedelta
-
-from django.core.exceptions import ValidationError
 
 from apps.chat.choices import ConversationType, ParticipantRole
 from apps.chat.models import Conversation, Message, Participant
-from apps.common.constants import MAX_MESSAGE_LENGTH
-
 from apps.chat.services import (
     add_participant,
+    create_direct_conversation,
     create_group_conversation,
     leave_conversation,
+    mark_conversation_as_read,
     remove_participant,
-    create_direct_conversation,
     send_message,
-    mark_conversation_as_read
 )
-from apps.common.constants import MAX_GROUP_PARTICIPANTS
-from django.core.exceptions import PermissionDenied
+from apps.common.constants import MAX_GROUP_PARTICIPANTS, MAX_MESSAGE_LENGTH
 
 pytestmark = pytest.mark.django_db
 

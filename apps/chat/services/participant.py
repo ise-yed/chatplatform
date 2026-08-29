@@ -1,6 +1,10 @@
-from apps.chat.models import Message, Participant
-from apps.chat.services.realtime import broadcast_read_receipt
+from django.db import transaction
 
+from apps.chat.models import Message, Participant ,Conversation
+from apps.chat.services.realtime import broadcast_read_receipt
+from django.core.exceptions import PermissionDenied, ValidationError
+from apps.chat.choices import ConversationType, ParticipantRole
+from apps.common.constants import MAX_GROUP_PARTICIPANTS
 
 def mark_conversation_as_read(*, conversation_id, user, message_id=None):
     """
@@ -46,3 +50,66 @@ def mark_conversation_as_read(*, conversation_id, user, message_id=None):
     broadcast_read_receipt(
         conversation_id=conversation_id, user_id=user.id, last_read_message_id=message.id
     )
+    
+def _get_admin_participant_or_raise(*, conversation_id, actor):
+    """
+    Internal helper: returns actor's Participant row if actor is an
+    ADMIN of this conversation, otherwise raises PermissionDenied.
+    Shared by add_participant and remove_participant so the "must be
+    admin" check has exactly one implementation.
+    """
+    participant = Participant.objects.filter(conversation_id=conversation_id, user=actor).first()
+    if participant is None or participant.role != ParticipantRole.ADMIN:
+        raise PermissionDenied('Only group admins can manage participants.')
+    return participant
+
+
+
+@transaction.atomic
+def add_participant(*, conversation_id, actor, user):
+    """
+    Adds `user` to a GROUP conversation as a MEMBER. Only callable by
+    an existing ADMIN of that conversation (`actor`) — enforced here,
+    not just at the permission-class layer, so this remains true no
+    matter where the call comes from.
+    """
+    conversation = Conversation.objects.filter(id=conversation_id, type=ConversationType.GROUP).first()
+    if conversation is None:
+        raise ValidationError('Group conversation not found.')
+
+    _get_admin_participant_or_raise(conversation_id=conversation_id, actor=actor)
+
+    if Participant.objects.filter(conversation_id=conversation_id, user=user).exists():
+        raise ValidationError('This user is already a participant.')
+
+    current_count = Participant.objects.filter(conversation_id=conversation_id).count()
+    if current_count >= MAX_GROUP_PARTICIPANTS:
+        raise ValidationError(f'A group cannot have more than {MAX_GROUP_PARTICIPANTS} members.')
+
+    return Participant.objects.create(conversation=conversation, user=user, role=ParticipantRole.MEMBER)
+
+
+@transaction.atomic
+def remove_participant(*, conversation_id, actor, user_id):
+    """
+    Removes a participant from a GROUP conversation. Admin-only, same
+    reasoning as add_participant.
+
+    Refuses to remove an ADMIN if they are the conversation's only
+    remaining admin — otherwise the group would end up with no one
+    able to manage membership at all.
+    """
+    _get_admin_participant_or_raise(conversation_id=conversation_id, actor=actor)
+
+    target = Participant.objects.filter(conversation_id=conversation_id, user_id=user_id).first()
+    if target is None:
+        raise ValidationError('This user is not a participant of this conversation.')
+
+    if target.role == ParticipantRole.ADMIN:
+        remaining_admins = Participant.objects.filter(
+            conversation_id=conversation_id, role=ParticipantRole.ADMIN
+        ).exclude(id=target.id).count()
+        if remaining_admins == 0:
+            raise ValidationError('Cannot remove the only remaining admin of this group.')
+
+    target.delete()

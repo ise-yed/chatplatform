@@ -1,14 +1,20 @@
 import pytest
+
 from apps.chat.selectors import (
     get_conversation_for_user,
     get_conversations_for_user,
+    get_group_participants,
+    get_latest_other_participant_read_message,
     get_messages_for_conversation,
-    is_user_participant,
-    get_group_participants, 
     is_conversation_admin,
-    get_latest_other_participant_read_message
+    is_user_participant,
 )
-from apps.chat.services import create_direct_conversation, send_message,create_group_conversation ,mark_conversation_as_read
+from apps.chat.services import (
+    create_direct_conversation,
+    create_group_conversation,
+    mark_conversation_as_read,
+    send_message,
+)
 
 pytestmark = pytest.mark.django_db
 

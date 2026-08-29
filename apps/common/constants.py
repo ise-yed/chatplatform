@@ -36,7 +36,7 @@ TYPING = 'typing'
 NEW_MESSAGE = 'message.new'
 BROADCAST_PRESENCE_UPDATE = 'presence.update'
 SESSION_REVOKED = 'session.revoked'
-
+CONVERSATION_UPDATE = 'conversation.update'
 
 def device_session_group(session_id):
     """
