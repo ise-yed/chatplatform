@@ -173,9 +173,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  
 
-
+MAILERS = {
+    'default': {
+        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+    },
+}
 
 
 LOGIN_URL = 'accounts:login'
@@ -206,3 +210,7 @@ CHANNEL_LAYERS = {
         'CONFIG': {'hosts': [(REDIS_HOST, REDIS_PORT)]},
     },
 }
+
+
+
+

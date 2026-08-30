@@ -17,6 +17,8 @@ from apps.chat.services import (
     send_message,
 )
 from apps.common.constants import MAX_GROUP_PARTICIPANTS, MAX_MESSAGE_LENGTH
+from PIL import Image  
+import io  
 
 pytestmark = pytest.mark.django_db
 
@@ -173,8 +175,19 @@ def test_send_message_strips_surrounding_whitespace(user_a, user_b):
     assert message.content == 'hi'
 
 def test_send_image_message_saves_attachment(user_a, user_b):
+    """Sending an image message should save the attachment with correct metadata."""
     conversation = create_direct_conversation(creator=user_a, other_user=user_b)
-    image = SimpleUploadedFile('photo.jpg', b'fake-image', content_type='image/jpeg')
+    
+    img = Image.new('RGB', (100, 100), color='red')
+    img_io = io.BytesIO()
+    img.save(img_io, format='JPEG')
+    img_io.seek(0)
+    
+    image = SimpleUploadedFile(
+        'photo.jpg',
+        img_io.getvalue(),
+        content_type='image/jpeg'
+    )
 
     message = send_message(
         conversation_id=conversation.id,
@@ -187,7 +200,8 @@ def test_send_image_message_saves_attachment(user_a, user_b):
     assert message.attachment
     assert message.file_name == 'photo.jpg'
     assert message.mime_type == 'image/jpeg'
-    assert message.file_size == len(b'fake-image')
+    assert message.file_size == len(img_io.getvalue())
+
 
 
 def test_send_music_message_rejects_non_audio(user_a, user_b):

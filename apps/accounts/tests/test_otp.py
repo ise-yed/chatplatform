@@ -1,9 +1,10 @@
 # apps/accounts/tests/test_otp.py
 import pytest
 from django.core.cache import cache
-from django.core import mail
 from django.conf import settings
+from unittest.mock import patch, MagicMock
 from apps.accounts.services.otp import OTPService
+
 
 @pytest.mark.django_db
 class TestOTPService:
@@ -55,7 +56,8 @@ class TestOTPService:
             data = cache.get(key)
             
             assert data is not None
-            assert data["code"] == code
+            assert "code_hash" in data
+            assert data["code_hash"] == OTPService._hash_code(code)
             assert data["attempts"] == 0
             assert "created_at" in data
             assert data["created_at"] is not None
@@ -75,7 +77,7 @@ class TestOTPService:
             data2 = cache.get(key)
             
             assert code1 != code2
-            assert data1["code"] != data2["code"]
+            assert data1["code_hash"] != data2["code_hash"]
             assert data2["attempts"] == 0
         
         def test_create_otp_default_purpose(self, user):
@@ -86,7 +88,7 @@ class TestOTPService:
             data = cache.get(key)
             
             assert data is not None
-            assert data["code"] == code
+            assert data["code_hash"] == OTPService._hash_code(code)
         
         def test_create_otp_custom_purpose(self, user):
             """Should use custom purpose if specified."""
@@ -97,7 +99,7 @@ class TestOTPService:
             data = cache.get(key)
             
             assert data is not None
-            assert data["code"] == code
+            assert data["code_hash"] == OTPService._hash_code(code)
     
     class TestVerifyOTP:
         """Tests for verify_otp method."""
@@ -203,7 +205,8 @@ class TestOTPService:
     class TestSendOTPEmail:
         """Tests for send_otp_email method."""
         
-        def test_send_otp_email_success(self, user, mock_send_mail):
+        @patch('apps.accounts.services.otp.send_mail')
+        def test_send_otp_email_success(self, mock_send_mail, user):
             """Should send OTP email successfully."""
             code = "123456"
             
@@ -211,60 +214,85 @@ class TestOTPService:
             
             assert success is True
             assert error is None
+            # ✅ با fail_silently=True
             mock_send_mail.assert_called_once_with(
                 subject="Password Reset OTP Code",
                 message=f"Your OTP code is: {code}",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
-                fail_silently=True,
+                fail_silently=True,  # ✅ حفظ شده
             )
         
-        def test_send_otp_email_with_exception(self, user, mock_send_mail, mock_logger):
+        @patch('apps.accounts.services.otp.send_mail')
+        @patch('apps.accounts.services.otp.logging.getLogger')
+        def test_send_otp_email_with_exception(self, mock_get_logger, mock_send_mail, user):
             """Should handle exception when sending email fails."""
             code = "123456"
             mock_send_mail.side_effect = Exception("SMTP connection failed")
+            mock_logger = MagicMock()
+            mock_get_logger.return_value = mock_logger
             
             success, error = OTPService.send_otp_email(user, code)
             
+            # ✅ با fail_silently=True، استثنا گرفته می‌شود و False برمی‌گردد
             assert success is False
             assert "Failed to send OTP email" in error
-            mock_logger.assert_called_once()
-            # Check that logger was called with the right message
-            call_args = mock_logger.call_args[0][0]
+            mock_logger.error.assert_called_once()
+            call_args = mock_logger.error.call_args[0][0]
             assert "Failed to send OTP email" in call_args
             assert "SMTP connection failed" in call_args
         
-        def test_send_otp_email_uses_correct_email(self, user, mock_send_mail):
+        @patch('apps.accounts.services.otp.send_mail')
+        def test_send_otp_email_uses_correct_email(self, mock_send_mail, user):
             """Should send email to user's email address."""
             code = "123456"
             
             OTPService.send_otp_email(user, code)
             
-            call_args = mock_send_mail.call_args[1]
-            assert call_args["recipient_list"] == [user.email]
+            # ✅ بررسی call_args با fail_silently
+            call_args = mock_send_mail.call_args
+            assert call_args is not None
+            kwargs = call_args[1]  # آرگومان‌های کلیدی
+            assert kwargs["recipient_list"] == [user.email]
+            assert kwargs["fail_silently"] is True  # ✅ بررسی fail_silently
         
-        def test_send_otp_email_fail_silently_true(self, user, mock_send_mail):
+        @patch('apps.accounts.services.otp.send_mail')
+        def test_send_otp_email_fail_silently_true(self, mock_send_mail, user):
             """Should use fail_silently=True."""
             code = "123456"
             
             OTPService.send_otp_email(user, code)
             
-            call_args = mock_send_mail.call_args[1]
-            assert call_args["fail_silently"] is True
+            # ✅ بررسی وجود fail_silently=True
+            call_args = mock_send_mail.call_args
+            assert call_args is not None
+            kwargs = call_args[1]
+            assert kwargs["fail_silently"] is True
+        
+        @patch('apps.accounts.services.otp.send_mail')
+        def test_send_otp_email_has_correct_subject(self, mock_send_mail, user):
+            """Should have correct email subject."""
+            code = "123456"
+            
+            OTPService.send_otp_email(user, code)
+            
+            call_args = mock_send_mail.call_args
+            assert call_args is not None
+            kwargs = call_args[1]
+            assert kwargs["subject"] == "Password Reset OTP Code"
     
     class TestSendOTPSMS:
         """Tests for send_otp_sms method."""
         
         def test_send_otp_sms_placeholder(self):
             """Should be implemented later."""
-            # This is just a placeholder test
-            # When you implement SMS, add proper tests
             pass
     
     class TestIntegration:
         """Integration tests for complete flow."""
         
-        def test_full_otp_flow_success(self, user):
+        @patch('apps.accounts.services.otp.send_mail')
+        def test_full_otp_flow_success(self, mock_send_mail, user):
             """Should complete full OTP flow successfully."""
             # Step 1: Create OTP
             code = OTPService.create_otp(user.id, "password_reset")

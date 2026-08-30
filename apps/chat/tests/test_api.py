@@ -11,6 +11,8 @@ from apps.chat.services import (
     create_group_conversation,
     send_message,
 )
+from PIL import Image  
+import io  
 
 pytestmark = pytest.mark.django_db
 
@@ -170,9 +172,21 @@ def test_sent_message_response_includes_sender_username(auth_client, user_a, use
     assert response.data['sender_username'] == user_a.username
 
 def test_member_can_send_image(auth_client, user_a, user_b):
+    """A participant must be able to send an image message."""
     conversation = create_direct_conversation(creator=user_a, other_user=user_b)
     client = auth_client(user_a)
-    image = SimpleUploadedFile('photo.jpg', b'fake-image', content_type='image/jpeg')
+    
+    # ✅ ساخت تصویر معتبر با Pillow
+    img = Image.new('RGB', (100, 100), color='red')
+    img_io = io.BytesIO()
+    img.save(img_io, format='JPEG')
+    img_io.seek(0)
+    
+    image = SimpleUploadedFile(
+        'photo.jpg',
+        img_io.getvalue(),
+        content_type='image/jpeg'
+    )
 
     response = client.post(
         f'/api/v1/chat/conversations/{conversation.id}/messages/',
@@ -184,8 +198,7 @@ def test_member_can_send_image(auth_client, user_a, user_b):
     assert response.data['type'] == 'image'
     assert response.data['file_name'] == 'photo.jpg'
     assert response.data['attachment_url']
-
-
+    
 def test_create_group_conversation_endpoint(auth_client, user_a, user_b):
     client = auth_client(user_a)
     response = client.post(
