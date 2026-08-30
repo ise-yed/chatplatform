@@ -61,13 +61,13 @@ def broadcast_read_receipt(*, conversation_id, user_id, last_read_message_id):
     
 
 
-def broadcast_conversation_update(*, conversation, action = ConversationUpdateAction, participant_ids, last_message=None, extra_data=None):
+def broadcast_conversation_update(*, conversation, action : ConversationUpdateAction, participant_ids, last_message=None, extra_data=None):
     """
     Broadcasts a conversation update event to all participants except the actor.
 
     Args:
         conversation: Conversation instance
-        action: "new_message" | "info_updated" | "participant_added" | "participant_removed"
+        action: "new_message" | "info_updated" | "participant_added" | "participant_removed" | conversation_added
         participant_ids: List of user IDs to send to (excluding the actor)
         last_message: Optional Message instance (for new_message action)
         extra_data: Optional dict for participant events
@@ -85,19 +85,7 @@ def broadcast_conversation_update(*, conversation, action = ConversationUpdateAc
     }
 
     if last_message:
-        try:
             data['last_message'] = MessageSerializer(last_message).data
-        except NameError:
-            # fallback: ساخت دستی
-            data['last_message'] = {
-                'id': str(last_message.id),
-                'sender_id': str(last_message.sender_id),
-                'sender_username': last_message.sender.username,
-                'content': last_message.content[:100] if last_message.content else None,
-                'type': last_message.type,
-                'attachment': last_message.attachment.url if last_message.attachment else None,
-                'created_at': last_message.created_at.isoformat(),
-            }
     else:
         data['last_message'] = None
 

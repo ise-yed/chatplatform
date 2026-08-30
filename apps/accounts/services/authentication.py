@@ -11,7 +11,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.choices import AuthType
 from apps.accounts.models import DeviceSession
-from apps.accounts.services.realtime import broadcast_session_revoked
+from apps.accounts.services.realtime import broadcast_session_revoked ,broadcast_user_updated
+from apps.chat.models import Conversation
 
 
 @transaction.atomic
@@ -138,12 +139,6 @@ def revoke_all_device_sessions(*, user, except_session_id=None):
 
     return len(sessions)
 
-
-
-
-from apps.accounts.services.realtime import broadcast_user_updated
-from apps.chat.models import Conversation
-from django.db import transaction
 
 
 def update_user_profile(*, user, new_username=None, new_avatar=None):

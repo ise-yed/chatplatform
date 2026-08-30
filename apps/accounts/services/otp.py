@@ -74,19 +74,26 @@ class OTPService:
         return True, None
     
     @staticmethod
-    def send_otp_email(email, code):
-        """Send OTP via email."""
-        subject = "Your OTP Code"
-        message = f"Your OTP code is: {code}\n\nThis code expires in 10 minutes."
+    def send_otp_email(user, code):
+        """Send OTP code via email."""
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            send_mail(
+                subject="Password Reset OTP Code",
+                message=f"Your OTP code is: {code}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,  
+            )
+            return True, None
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send OTP email to {user.email}: {str(e)}")
+            return False, "Failed to send OTP email. Please try again."
         
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-    
     @staticmethod
     def send_otp_sms(phone_number, code):
         """Send OTP via SMS."""

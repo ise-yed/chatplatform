@@ -228,11 +228,15 @@ class PasswordResetRequestOTPSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email__iexact=value, is_active=True)
         except User.DoesNotExist:
-            # raise serializers.ValidationError("No active user found with this email.")
-            pass
+            user = None
+
         self.context["user"] = user
         return value
+    
+    def validate(self, attrs):
+        """Always return success, even if user doesn't exist (security)."""
 
+        return attrs
 
 class PasswordResetOTPSerializer(serializers.Serializer):
     """Verify OTP and reset password."""
@@ -243,19 +247,23 @@ class PasswordResetOTPSerializer(serializers.Serializer):
     new_password_confirm = serializers.CharField(min_length=8, write_only=True)
     
     def validate(self, attrs):
-        # پیدا کردن کاربر
+        user = None
         try:
             user = User.objects.get(email__iexact=attrs["email"], is_active=True)
         except User.DoesNotExist:
+
             pass
-            # raise serializers.ValidationError({"email": "No active user found with this email."})
         
-        # تایید OTP
+        if user is None:
+            raise serializers.ValidationError({
+                "code": "Invalid or expired OTP code."
+            })
+                
         from apps.accounts.services.otp import OTPService
         is_valid, error = OTPService.verify_otp(user.id, attrs["code"])
         
         if not is_valid:
-            raise serializers.ValidationError({"code": error})
+            raise serializers.ValidationError({"code": error or "Invalid or expired OTP code."})
         
         # تایید رمز
         if attrs["new_password"] != attrs["new_password_confirm"]:
@@ -268,11 +276,13 @@ class PasswordResetOTPSerializer(serializers.Serializer):
     def save(self):
         user = self.context["user"]
         
+        if user is None:
+            raise serializers.ValidationError("User not found.")
+        
         # تغییر رمز
         user.set_password(self.validated_data["new_password"])
         user.save(update_fields=["password", "updated_at"])
         
-        # خروج از همه دستگاه‌ها
         revoke_all_device_sessions(user=user)
         
         return user
