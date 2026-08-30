@@ -37,7 +37,7 @@ NEW_MESSAGE = 'message.new'
 BROADCAST_PRESENCE_UPDATE = 'presence.update'
 SESSION_REVOKED = 'session.revoked'
 CONVERSATION_UPDATE = 'conversation.update'
-
+USER_UPDATED = 'user.updated'
 def device_session_group(session_id):
     """
     Channels group name for a single DeviceSession. Every WebSocket

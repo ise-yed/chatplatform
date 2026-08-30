@@ -1,9 +1,9 @@
 from django.db import transaction
 
 from apps.chat.models import Message, Participant ,Conversation
-from apps.chat.services.realtime import broadcast_read_receipt
+from apps.chat.services.realtime import broadcast_conversation_update, broadcast_read_receipt
 from django.core.exceptions import PermissionDenied, ValidationError
-from apps.chat.choices import ConversationType, ParticipantRole
+from apps.chat.choices import ConversationType, ConversationUpdateAction, ParticipantRole
 from apps.common.constants import MAX_GROUP_PARTICIPANTS
 
 def mark_conversation_as_read(*, conversation_id, user, message_id=None):
@@ -86,7 +86,20 @@ def add_participant(*, conversation_id, actor, user):
     if current_count >= MAX_GROUP_PARTICIPANTS:
         raise ValidationError(f'A group cannot have more than {MAX_GROUP_PARTICIPANTS} members.')
 
-    return Participant.objects.create(conversation=conversation, user=user, role=ParticipantRole.MEMBER)
+    participant = Participant.objects.create(conversation=conversation, user=user, role=ParticipantRole.MEMBER)
+
+    transaction.on_commit(
+        lambda: broadcast_conversation_update(
+            conversation=participant.conversation,
+            action=ConversationUpdateAction.participant_added,
+            participant_ids=[user.id],
+            last_message=participant.conversation.last_message,
+            extra_data={'user_id': str(user.id), 'username': user.username},
+        )
+    )
+
+    return participant
+
 
 
 @transaction.atomic
@@ -99,6 +112,8 @@ def remove_participant(*, conversation_id, actor, user_id):
     remaining admin — otherwise the group would end up with no one
     able to manage membership at all.
     """
+    conversation = Conversation.objects.get(id=conversation_id)
+
     _get_admin_participant_or_raise(conversation_id=conversation_id, actor=actor)
 
     target = Participant.objects.filter(conversation_id=conversation_id, user_id=user_id).first()
@@ -113,3 +128,13 @@ def remove_participant(*, conversation_id, actor, user_id):
             raise ValidationError('Cannot remove the only remaining admin of this group.')
 
     target.delete()
+
+    transaction.on_commit(
+        lambda: broadcast_conversation_update(
+            conversation=conversation,
+            action=ConversationUpdateAction.participant_removed,
+            participant_ids=[user_id],
+            last_message=conversation.last_message,
+            extra_data={'user_id': str(user_id)},
+        )
+    )

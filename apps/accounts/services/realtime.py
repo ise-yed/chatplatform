@@ -5,6 +5,7 @@ from apps.common.constants import (
     BROADCAST_PRESENCE_UPDATE,
     BROADCAST_SESSION_REVOKED,
     PRESENCE_GROUP,
+    USER_UPDATED,
     device_session_group,
 )
 
@@ -61,3 +62,29 @@ def broadcast_session_revoked(*, session_id):
         device_session_group(session_id),
         {'type': BROADCAST_SESSION_REVOKED},
     )
+    
+
+
+def broadcast_user_updated(*, user_id, username, avatar_url, participant_ids):
+    """
+    Broadcasts a user profile update to all participants who have a direct
+    conversation with this user.
+    """
+    if not participant_ids:
+        return
+
+    channel_layer = get_channel_layer()
+    event_data = {
+        'type': USER_UPDATED,  
+        'data': {
+            'user_id': str(user_id),
+            'username': username,
+            'avatar': avatar_url,
+        }
+    }
+
+    for target_user_id in participant_ids:
+        async_to_sync(channel_layer.group_send)(
+            f'user_{target_user_id}',
+            event_data
+        )

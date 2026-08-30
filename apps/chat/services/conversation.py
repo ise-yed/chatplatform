@@ -2,8 +2,9 @@
 from django.core.exceptions import  ValidationError
 from django.db import transaction
 
-from apps.chat.choices import ConversationType, ParticipantRole
+from apps.chat.choices import ConversationType, ConversationUpdateAction, ParticipantRole
 from apps.chat.models import Conversation, Participant
+from apps.chat.services.realtime import broadcast_conversation_update
 from apps.common.constants import MAX_GROUP_PARTICIPANTS
 
 
@@ -60,6 +61,16 @@ def create_direct_conversation(*, creator, other_user):
         Participant(conversation=conversation, user=creator, role=ParticipantRole.MEMBER),
         Participant(conversation=conversation, user=other_user, role=ParticipantRole.MEMBER),
     ])
+    
+    transaction.on_commit(
+        lambda: broadcast_conversation_update(
+            conversation=conversation,
+            action=ConversationUpdateAction.conversation_added, 
+            participant_ids=[other_user.id],
+            last_message=None,
+        )
+    )
+
     return conversation
 
 
@@ -107,8 +118,19 @@ def create_group_conversation(*, creator, title, description='', avatar=None, pa
         Participant(conversation=conversation, user_id=user_id, role=ParticipantRole.MEMBER)
         for user_id in participant_ids
     ]
+    
     Participant.objects.bulk_create(participants)
-
+    all_participant_ids = list(participant_ids) 
+    if all_participant_ids:
+        transaction.on_commit(
+            lambda: broadcast_conversation_update(
+                conversation=conversation,
+                action=ConversationUpdateAction.conversation_added,
+                participant_ids=all_participant_ids,
+                last_message=None,
+                extra_data={'user_id': str(creator.id), 'username': creator.username},
+            )
+        )
     return conversation
 
 

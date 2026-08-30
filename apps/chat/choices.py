@@ -18,3 +18,13 @@ class MessageType(models.TextChoices):
     MUSIC = 'music', 'Music'
     VIDEO = 'video', 'Video'
     DOCUMENT = 'document', 'Document'
+    
+class ConversationUpdateAction(models.TextChoices):
+    participant_removed = 'participant_removed'
+    participant_added = 'participant_added'
+    new_message = 'new_message'
+    conversation_added = 'conversation_added'
+    # conversation_added = 'conversation_added'
+
+    
+    

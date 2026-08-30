@@ -1,8 +1,13 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
-from apps.common.constants import BROADCAST_NEW_MESSAGE, BROADCAST_READ_RECEIPT
-
+from apps.chat.api.v1.serializers.conversation import ConversationListSerializer 
+from apps.chat.api.v1.serializers.message import MessageSerializer  
+from apps.chat.choices import ConversationUpdateAction
+from apps.common.constants import (
+    BROADCAST_NEW_MESSAGE,
+    BROADCAST_READ_RECEIPT,
+    CONVERSATION_UPDATE,  
+)
 
 def broadcast_new_message(*, message):
     """
@@ -52,3 +57,58 @@ def broadcast_read_receipt(*, conversation_id, user_id, last_read_message_id):
             'last_read_message_id': str(last_read_message_id),
         },
     )
+    
+    
+
+
+def broadcast_conversation_update(*, conversation, action = ConversationUpdateAction, participant_ids, last_message=None, extra_data=None):
+    """
+    Broadcasts a conversation update event to all participants except the actor.
+
+    Args:
+        conversation: Conversation instance
+        action: "new_message" | "info_updated" | "participant_added" | "participant_removed"
+        participant_ids: List of user IDs to send to (excluding the actor)
+        last_message: Optional Message instance (for new_message action)
+        extra_data: Optional dict for participant events
+    """
+    if not participant_ids:
+        return
+
+    channel_layer = get_channel_layer()
+
+    conversation_data = ConversationListSerializer(conversation).data
+
+    data = {
+        'action': action,
+        'conversation': conversation_data,
+    }
+
+    if last_message:
+        try:
+            data['last_message'] = MessageSerializer(last_message).data
+        except NameError:
+            # fallback: ساخت دستی
+            data['last_message'] = {
+                'id': str(last_message.id),
+                'sender_id': str(last_message.sender_id),
+                'sender_username': last_message.sender.username,
+                'content': last_message.content[:100] if last_message.content else None,
+                'type': last_message.type,
+                'attachment': last_message.attachment.url if last_message.attachment else None,
+                'created_at': last_message.created_at.isoformat(),
+            }
+    else:
+        data['last_message'] = None
+
+    if extra_data:
+        data['extra'] = extra_data
+
+    for user_id in participant_ids:
+        async_to_sync(channel_layer.group_send)(
+            f'user_{user_id}',
+            {
+                'type': CONVERSATION_UPDATE, 
+                'data': data,
+            }
+        )

@@ -138,3 +138,40 @@ def revoke_all_device_sessions(*, user, except_session_id=None):
 
     return len(sessions)
 
+
+
+
+from apps.accounts.services.realtime import broadcast_user_updated
+from apps.chat.models import Conversation
+from django.db import transaction
+
+
+def update_user_profile(*, user, new_username=None, new_avatar=None):
+    with transaction.atomic():
+        # if new_username:
+        #     user.username = new_username
+        if new_avatar:
+            user.avatar = new_avatar
+        user.save()
+
+        # دریافت کاربرانی که با این user دایرکت دارند
+        direct_conversations = Conversation.objects.filter(
+            type='direct',
+            participants__user=user
+        )
+        participant_ids = set()
+        for conv in direct_conversations:
+            other_participants = conv.participants.exclude(user_id=user.id).values_list('user_id', flat=True)
+            participant_ids.update(other_participants)
+
+        if participant_ids:
+            transaction.on_commit(
+                lambda: broadcast_user_updated(
+                    user_id=user.id,
+                    username=user.username,
+                    avatar_url=user.avatar.url if user.avatar else None,
+                    participant_ids=list(participant_ids),
+                )
+            )
+
+    return user

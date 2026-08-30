@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.chat.models import Conversation
-
+from apps.chat.api.v1.serializers.message import MessageSerializer
 
 class ParticipantUserSerializer(serializers.Serializer):
     """
@@ -20,10 +20,12 @@ class ConversationListSerializer(serializers.ModelSerializer):
     شکل خروجی یه گفتگو برای لیست/جزئیات — شامل لیست شرکت‌کننده‌ها.
     """
     participants = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField() 
+
 
     class Meta:
         model = Conversation
-        fields = ['id', 'type', 'title', 'is_archived', 'participants', 'created_at', 'updated_at']
+        fields = ['id', 'type', 'title', 'is_archived', 'participants', 'created_at', 'updated_at' ,'last_message' ]
 
     def get_participants(self, obj):
         """
@@ -34,7 +36,15 @@ class ConversationListSerializer(serializers.ModelSerializer):
         return ParticipantUserSerializer(
             [p.user for p in obj.participants.all()], many=True
         ).data
-
+        
+    def get_last_message(self, obj):
+        """
+        آخرین پیام گفتگو رو با استفاده از MessageSerializer سریالایز می‌کنه.
+        اگر last_message نال باشه، None برمی‌گردونه.
+        """
+        if obj.last_message:
+            return MessageSerializer(obj.last_message, context=self.context).data
+        return None
 
 class CreateDirectConversationSerializer(serializers.Serializer):
     """

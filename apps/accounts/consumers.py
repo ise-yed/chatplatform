@@ -13,7 +13,10 @@ from apps.accounts.services.realtime import PRESENCE_GROUP
 from apps.common.constants import (
     BROADCAST_PRESENCE_UPDATE,
     SESSION_REVOKED,
+    CONVERSATION_UPDATE,
+    USER_UPDATED,
     device_session_group,
+    
 )
 
 
@@ -27,6 +30,9 @@ class PresenceConsumer(AsyncWebsocketConsumer):
         self.session_id = self.scope.get('session_id')
 
         await self.channel_layer.group_add(PRESENCE_GROUP, self.channel_name)
+        
+        self.user_group = f'user_{self.user.id}'
+        await self.channel_layer.group_add(self.user_group, self.channel_name)
 
         # See apps.chat.consumers.ChatConsumer for why this group join
         # exists: it's what lets broadcast_session_revoked() force-close
@@ -47,7 +53,8 @@ class PresenceConsumer(AsyncWebsocketConsumer):
             return
 
         await self.channel_layer.group_discard(PRESENCE_GROUP, self.channel_name)
-
+        if hasattr(self, 'user_group'):
+            await self.channel_layer.group_discard(self.user_group, self.channel_name)
         if hasattr(self, 'session_group_name'):
             await self.channel_layer.group_discard(self.session_group_name, self.channel_name)
 
@@ -61,6 +68,18 @@ class PresenceConsumer(AsyncWebsocketConsumer):
         except asyncio.CancelledError:
             pass
 
+
+    async def conversation_update(self, event):
+        await self.send(text_data=json.dumps({
+            'event': CONVERSATION_UPDATE,
+            'data': event['data']
+        }))
+
+    async def user_updated(self, event):
+        await self.send(text_data=json.dumps({
+            'event': USER_UPDATED,
+            'data': event['data']
+        }))
 
 
     async def presence_update(self, event):

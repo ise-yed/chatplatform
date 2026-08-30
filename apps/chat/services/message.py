@@ -4,9 +4,13 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.chat.choices import MessageType
+from apps.chat.choices import ConversationUpdateAction, MessageType
 from apps.chat.models import Conversation, Message
-from apps.chat.services.realtime import broadcast_new_message
+from apps.chat.models.participant import Participant
+from apps.chat.services.realtime import (
+    broadcast_new_message,
+    broadcast_conversation_update,
+)
 from apps.common.constants import MAX_MESSAGE_LENGTH
 
 # ============== Constants ==============
@@ -192,11 +196,27 @@ def send_message(*, conversation_id, sender, content='', message_type=MessageTyp
             mime_type=file_info.get('mime_type', ''),
         )
         
-        # Update conversation timestamp
-        Conversation.objects.filter(id=conversation_id).update(
-            updated_at=timezone.now()
-        )
-        
+        conversation = Conversation.objects.select_for_update().get(id=conversation_id)
+        conversation.last_message = message
+        conversation.updated_at = timezone.now()
+        conversation.save(update_fields=['last_message', 'updated_at'])
+
+        # 1. Broadcast به گروه مکالمه (برای کسانی که داخل چت هستند)
         transaction.on_commit(lambda: broadcast_new_message(message=message))
+
+        # 2. Broadcast به گروه اختصاصی شرکت‌کنندگان دیگر (برای لیست چت‌ها)
+        participant_ids = Participant.objects.filter(
+            conversation_id=conversation_id
+        ).exclude(user_id=sender.id).values_list('user_id', flat=True)
+
+        if participant_ids:
+            transaction.on_commit(
+                lambda: broadcast_conversation_update(
+                    conversation=conversation,
+                    action=ConversationUpdateAction.new_message,
+                    last_message=message,
+                    participant_ids=list(participant_ids),
+                )
+            )
     
     return message

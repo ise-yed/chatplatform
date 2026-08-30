@@ -23,6 +23,13 @@ class Conversation(BaseModel):
     type = models.CharField(
         max_length=10, choices=ConversationType.choices, default=ConversationType.DIRECT
     )
+    last_message = models.ForeignKey(
+        'chat.Message',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+'
+    )
     title = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
     avatar = models.ImageField(upload_to=conversation_avatar_upload_to, blank=True, null=True)
