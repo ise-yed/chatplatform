@@ -31,7 +31,7 @@ class RegisterView(APIView):
     """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    # throttle_scope = "register"
+    throttle_scope = "register"
     
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -157,7 +157,7 @@ class PasswordResetRequestOTPView(APIView):
     
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    # throttle_scope = "password_reset"
+    throttle_scope = "password_reset"
     
     def post(self, request):
         serializer = PasswordResetRequestOTPSerializer(data=request.data)

@@ -1,3 +1,5 @@
+import json
+
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from apps.chat.api.v1.serializers.conversation import ConversationListSerializer 
@@ -8,6 +10,7 @@ from apps.common.constants import (
     BROADCAST_READ_RECEIPT,
     CONVERSATION_UPDATE,  
 )
+from django.core.serializers.json import DjangoJSONEncoder
 
 def broadcast_new_message(*, message):
     """
@@ -82,21 +85,23 @@ def broadcast_conversation_update(*, conversation, action : ConversationUpdateAc
     data = {
         'action': action,
         'conversation': conversation_data,
+        # 'last_message': MessageSerializer(last_message).data if last_message else None,
+
     }
 
-    if last_message:
-            data['last_message'] = MessageSerializer(last_message).data
-    else:
-        data['last_message'] = None
 
     if extra_data:
         data['extra'] = extra_data
+        
+    serialized_data = json.loads(
+    json.dumps(data, cls=DjangoJSONEncoder)
+)
 
     for user_id in participant_ids:
         async_to_sync(channel_layer.group_send)(
-            f'user_{user_id}',
+            f'user_{str(user_id)}',
             {
                 'type': CONVERSATION_UPDATE, 
-                'data': data,
+                'data': serialized_data,
             }
         )
